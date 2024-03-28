@@ -1,0 +1,67 @@
+// Soil Health Diagnostic System
+digraph {
+	graph [bgcolor=white fontcolor="#333333" fontname=Helvetica fontsize=10 layout=dot ratio=compress]
+	node [fontcolor="#333333" fontname=Helvetica fontsize=8 shape=rectangle style=filled]
+	edge [arrowhead=normal arrowtail=none]
+	subgraph cluster_left {
+		node [color="#D95319" fontcolor="#333333" rankdir=TB]
+		fontname=Helvetica fontsize=10 label=Start style=filled
+		start [label=Start color="#87CEFA"]
+		input [label="Input Farmer Info
+and Soil Health Indicators" color="#FFD700"]
+		validate [label="Validate Input" color="#006400"]
+	}
+	subgraph cluster_right {
+		node [color="#006400" fontcolor="#333333" rankdir=TB]
+		fontname=Helvetica fontsize=10 label=End style=filled
+		assess [label="Assess Soil Health" color="#FFD700"]
+		output [label="Output Soil Health
+Score and Recommendations" color="#D95319"]
+		save [label="Save Results
+to Database" color="#FFD700"]
+		generate_report [label="Generate PDF
+Report" color="#FFD700"]
+		end [label=End color="#FFD700"]
+	}
+	subgraph cluster_fahp {
+		node [color="#D95319" fontcolor="#333333"]
+		fontname=Helvetica fontsize=10 label="FAHP Weight Calculation" style=filled
+		fahp_start [label=Start color="#EDB120"]
+		fahp_input [label="Input Fuzzy
+Comparison Matrix" color="#D95319"]
+		geometric_mean [label="Calculate Fuzzy
+Geometric Means" color="#87CEFA"]
+		fuzzy_weights [label="Calculate Fuzzy
+Weights" color="#EDB120"]
+		defuzzify [label="Defuzzify Fuzzy
+Weights" color="#EDB120"]
+		normalize [label="Normalize Weights" color="#D95319"]
+		consistency_check [label="Check Consistency
+Ratio" color="#D95319"]
+		consistent [label="Consistent?" color="#87CEFA" fontcolor=black]
+		fahp_output [label="Output FAHP
+Weights" color="#87CEFA"]
+		fahp_end [label=End color="#D95319"]
+		reenter [label="Re-enter Fuzzy
+Comparison Matrix" color="#FFD700"]
+		fahp_start -> fahp_input
+		fahp_input -> geometric_mean
+		geometric_mean -> fuzzy_weights
+		fuzzy_weights -> defuzzify
+		defuzzify -> normalize
+		normalize -> consistency_check
+		consistency_check -> consistent
+		consistent -> fahp_output [label=Yes fontcolor=green]
+		consistent -> reenter [label=No fontcolor=red]
+		reenter -> fahp_input
+		fahp_output -> fahp_end
+	}
+	start -> input
+	input -> validate
+	validate -> fahp_start
+	fahp_end -> assess
+	assess -> output
+	output -> save
+	save -> generate_report
+	generate_report -> end
+}

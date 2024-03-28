@@ -1,0 +1,7 @@
+THEMES:
+
+def create_gui():
+    window = ThemedTk(theme="ubuntu")  # Use the any themes
+    window.title("Soil Health Diagnostic System")
+
+'radiance', 'scidpurple', 'scidgreen', 'black', 'elegance', 'arc', 'winnative', 'keramik', 'scidgrey', 'aquativo', 'blue', 'scidmint', 'itft1', 'clam', 'ubuntu', 'plastik', 'default', 'xpnative', 'smog', 'kroc', 'vista', 'scidblue', 'scidsand', 'clearlooks', 'adapta', 'yaru', 'scidpink', 'breeze', 'classic', 'equilux', 'winxpblue', 'alt'
