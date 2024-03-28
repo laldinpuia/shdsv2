@@ -515,8 +515,8 @@ def create_gui():
     report_button.config(state=tk.DISABLED)
 
     # Create the 'View Database' button with the icon
-    view_database_button = ttk.Button(button_frame, text="View Database", command=view_database, image=database_photo,
-                                      compound=tk.LEFT)
+    view_database_button = ttk.Button(button_frame, text="View Database", command=lambda: view_database(window),
+                                      image=database_photo, compound=tk.LEFT)
     view_database_button.image = database_photo  # Keep a reference to the image to prevent garbage collection
     view_database_button.grid(row=0, column=5, padx=5, sticky="we")  # Use grid instead of pack
 

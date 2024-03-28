@@ -1,6 +1,6 @@
 import sqlite3
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox  # Add 'messagebox' to the import statement
 from PIL import Image as PILImage, ImageTk
 
 def create_database():
@@ -49,14 +49,17 @@ def save_results(data):
     conn.commit()
     conn.close()
 
-def view_database():
+def view_database(window):
     # Create a new window for database browsing
     db_window = tk.Toplevel(window)
     db_window.title("Soil Health Database")
 
     # Create a Treeview widget to display the records
     tree = ttk.Treeview(db_window, show="headings")  # Add show="headings" to hide the empty first column
-    tree["columns"] = ("id", "test_id", "collection_date", "latitude", "longitude", "name", "area", "gender", "age", "address", "mobile_no", "soil_ph", "nitrogen", "phosphorus", "potassium", "electrical_conductivity", "temperature", "moisture", "humidity", "soil_health_score", "recommendations")
+    tree["columns"] = (
+    "id", "test_id", "collection_date", "latitude", "longitude", "name", "area", "gender", "age", "address",
+    "mobile_no", "soil_ph", "nitrogen", "phosphorus", "potassium", "electrical_conductivity", "temperature", "moisture",
+    "humidity", "soil_health_score", "recommendations")
     tree.heading("id", text="ID")
     tree.heading("test_id", text="Test ID")
     tree.heading("collection_date", text="Collection Date")
@@ -169,20 +172,31 @@ def view_database():
 
     # Create a button to export the records to Excel (.xlsx)
     def export_to_excel():
-        file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")])
-        if file_path:
-            workbook = openpyxl.Workbook()
-            sheet = workbook.active
-            sheet.append(
-                ["ID", "Test ID", "Collection Date", "Latitude", "Longitude", "Name", "Area (ha)", "Gender", "Age",
-                 "Address", "Mobile No.", "Soil pH", "Nitrogen", "Phosphorus", "Potassium",
-                 "Electrical Conductivity", "Temperature", "Moisture", "Humidity", "Soil Health Score",
-                 "Recommendations"])
-            for record in tree.get_children():
-                values = tree.item(record)['values']
-                sheet.append(values)
-            workbook.save(file_path)
-            messagebox.showinfo("Export", "Records exported to Excel successfully.")
+        selected_item = tree.focus()
+        if selected_item:
+            test_id = tree.item(selected_item)['values'][1]  # Get the test_id from the selected row
+            file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")],
+                                                     initialfile=f"{test_id}_test.xlsx")
+            if file_path:
+                conn = sqlite3.connect('soil_health.db')
+                c = conn.cursor()
+                c.execute("SELECT * FROM soil_tests WHERE test_id = ?", (test_id,))
+                data = c.fetchall()
+                conn.close()
+
+                workbook = openpyxl.Workbook()
+                sheet = workbook.active
+                sheet.append(
+                    ["ID", "Test ID", "Collection Date", "Latitude", "Longitude", "Name", "Area (ha)", "Gender", "Age",
+                     "Address", "Mobile No.", "Soil pH", "Nitrogen", "Phosphorus", "Potassium",
+                     "Electrical Conductivity", "Temperature", "Moisture", "Humidity", "Soil Health Score",
+                     "Recommendations"])
+                for row in data:
+                    sheet.append(row)
+                workbook.save(file_path)
+                messagebox.showinfo("Export", "Records exported to Excel successfully.")
+        else:
+            messagebox.showwarning("No Selection", "Please select a record to export.")
 
     # Load the 'excel.png' icon
     excel_icon = PILImage.open('excel.png')
@@ -206,25 +220,5 @@ def view_database():
 
     # Add a button to close the database browsing window
     close_button = ttk.Button(db_window, text="Close", command=db_window.destroy, image=close_photo, compound=tk.LEFT)
-    close_button.image = close_photo  #Keep a reference to the image to prevent garbage collection
+    close_button.image = close_photo  # Keep a reference to the image to prevent garbage collection
     close_button.pack(pady=10)
-
-    def export_to_excel(test_id):
-        file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")], initialfile=f"{test_id}_test.xlsx")
-        if file_path:
-            conn = sqlite3.connect('soil_health.db')
-            c = conn.cursor()
-            c.execute("SELECT * FROM soil_tests WHERE test_id = ?", (test_id,))
-            data = c.fetchall()
-            conn.close()
-        workbook = openpyxl.Workbook()
-        sheet = workbook.active
-        sheet.append(['ID', 'Test ID', 'Sample Collection Date', 'Latitude', 'Longitude', 'Name', 'Area (ha)', 'Gender',
-                      'Age', 'Address', 'Mobile No.', 'Soil pH', 'Nitrogen', 'Phosphorus', 'Potassium',
-                      'Electrical Conductivity', 'Temperature', 'Moisture', 'Humidity', 'Soil Health Score',
-                      'Crop Recommendations'])
-        for row in data:
-            sheet.append(row)
-        workbook.save(file_path)
-
-    return file_path
