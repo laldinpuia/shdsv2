@@ -11,6 +11,9 @@ from assessment import assess_soil_health, generate_rating, generate_crop_recomm
 import matplotlib.pyplot as plt
 import numpy as np
 import io
+import sqlite3
+import openpyxl
+from tkinter import filedialog
 
 def generate_pdf_report(data, file_path, indicator_values):
     report = SimpleDocTemplate(file_path, pagesize=letter)

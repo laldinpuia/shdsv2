@@ -34,18 +34,41 @@ def create_database():
 def save_results(data):
     conn = sqlite3.connect('soil_health.db')
     c = conn.cursor()
+
+    # Create the soil_tests table if it doesn't exist
+    c.execute('''CREATE TABLE IF NOT EXISTS soil_tests
+                     (test_id INTEGER PRIMARY KEY,
+                      collection_date TEXT,
+                      latitude REAL,
+                      longitude REAL,
+                      name TEXT,
+                      area REAL,
+                      gender TEXT,
+                      age INTEGER,
+                      address TEXT,
+                      mobile_no TEXT,
+                      soil_ph REAL,
+                      nitrogen REAL,
+                      phosphorus REAL,
+                      potassium REAL,
+                      electrical_conductivity REAL,
+                      temperature REAL,
+                      moisture REAL,
+                      humidity REAL,
+                      soil_health_score REAL,
+                      recommendations TEXT)''')
+
     c.execute('''INSERT INTO soil_tests
-                 (test_id, collection_date, latitude, longitude, name, area, gender, age, address, mobile_no,
-                  soil_ph, nitrogen, phosphorus, potassium, electrical_conductivity, temperature, moisture, humidity,
-                  soil_health_score, recommendations)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-              (
-                  data['test_id'], data['collection_date'], data['latitude'], data['longitude'], data['name'],
-                  data['area'],
-                  data['gender'], data['age'], data['address'], data['mobile_no'], data['soil_ph'], data['nitrogen'],
-                  data['phosphorus'], data['potassium'], data['electrical_conductivity'], data['temperature'],
-                  data['moisture'],
-                  data['humidity'], data['soil_health_score'], data['recommendations']))
+                     (test_id, collection_date, latitude, longitude, name, area, gender, age, address, mobile_no,
+                      soil_ph, nitrogen, phosphorus, potassium, electrical_conductivity, temperature, moisture, humidity,
+                      soil_health_score, recommendations)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+              (data['test_id'], data['collection_date'], data['latitude'], data['longitude'], data['name'],
+               data['area'], data['gender'], data['age'], data['address'], data['mobile_no'], data['soil_ph'],
+               data['nitrogen'], data['phosphorus'], data['potassium'], data['electrical_conductivity'],
+               data['temperature'], data['moisture'], data['humidity'], data['soil_health_score'],
+               str(data['recommendations'])))
+
     conn.commit()
     conn.close()
 

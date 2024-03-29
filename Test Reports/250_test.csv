@@ -1,0 +1,12 @@
+ID,Test ID,Sample Collection Date,Latitude,Longitude,Name,Area (ha),Gender,Age,Address,Mobile No.,Soil pH,Nitrogen,Phosphorus,Potassium,Electrical Conductivity,Temperature,Moisture,Humidity,Soil Health Score,Crop Recommendations
+9,250,11-03-2024,252.311,521.0,asdasd,2.5,Female,34,asdashdgas,9865212123,2.5,200.0,150.0,200.0,2.0,25.0,30.0,40.0,0.4507367926927856,"Millets(Pearl Millet, Sorghum), Maize, Soybean, Groundnut"
+37,250,01-03-2024,250.135,2560.566,asdasd,25.0,Female,25,213a2s1das ,9856454545,2.0,350.0,25.0,24.0,2.0,25.0,30.0,44.0,0.3480020591232444,"Green Manure Crops, Legumes, Cowpea, Sesbania"
+38,250,01-03-2024,250.135,2560.566,asdasd,25.0,Female,25,213a2s1das ,9856454545,2.0,350.0,25.0,24.0,2.0,25.0,30.0,44.0,0.3480020591232444,"Green Manure Crops, Legumes, Cowpea, Sesbania"
+39,250,04-03-2024,235.6,2656.4,asdasd,25.0,Female,25,565656,9654264654,5.0,250.0,22.0,35.0,2.0,25.0,36.0,24.0,0.35066145891555,"Green Manure Crops, Legumes, Cowpea, Sesbania"
+40,250,04-03-2024,235.6,2656.4,asdasd,25.0,Female,25,565656,9654264654,5.0,250.0,22.0,35.0,2.0,25.0,36.0,24.0,0.35066145891555,"Green Manure Crops, Legumes, Cowpea, Sesbania"
+53,250,13-03-2024,251.365,235.5656,asdasd,25.0,Male,25,asdas3dasd,9986532323,8.0,200.0,101.0,235.0,2.0,25.0,30.0,60.0,0.5356002522466475,"Millets(Pearl Millet, Sorghum), Maize, Soybean, Groundnut"
+54,250,13-03-2024,251.365,235.5656,asdasd,25.0,Male,25,asdas3dasd,9986532323,8.0,200.0,101.0,235.0,2.0,25.0,30.0,60.0,0.5356002522466475,"Millets(Pearl Millet, Sorghum), Maize, Soybean, Groundnut"
+67,250,13-03-2024,251.235,25123.355,asdkjkjklasdljaskd,69.5456662232,Male,33,asdjklasdjk12k3j1kl23,9862323508,2.5,60.0,200.0,25.0,3.0,20.0,30.0,50.0,0.42307750023086155,"Millets(Pearl Millet, Sorghum), Maize, Soybean, Groundnut"
+68,250,13-03-2024,251.235,25123.355,asdkjkjklasdljaskd,69.5456662232,Male,33,asdjklasdjk12k3j1kl23,9862323508,2.5,60.0,200.0,25.0,3.0,20.0,30.0,50.0,0.42307750023086155,"Millets(Pearl Millet, Sorghum), Maize, Soybean, Groundnut"
+105,250,12-03-2024,250.0,336.0,asdasd56asd,22.0,Female,36,2asd4a5s6d4,9865323264,2.5,250.0,150.0,200.0,2.0,25.0,30.0,40.0,0.470703614543987,"Millets(Pearl Millet, Sorghum), Maize, Soybean, Groundnut"
+106,250,12-03-2024,250.0,336.0,asdasd56asd,22.0,Female,36,2asd4a5s6d4,9865323264,2.5,250.0,150.0,200.0,2.0,25.0,30.0,40.0,0.470703614543987,"Millets(Pearl Millet, Sorghum), Maize, Soybean, Groundnut"

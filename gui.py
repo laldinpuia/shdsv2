@@ -1,84 +1,68 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+import webbrowser
 from ttkthemes import ThemedTk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
-import csv
-import io
-import os
 import re
 from indicators import soil_indicators
-from fahp import fahp_weights, evaluate_soil_health
-from assessment import assess_soil_health, generate_rating, generate_crop_recommendations
+from fahp import evaluate_soil_health
+from assessment import assess_soil_health, generate_crop_recommendations
 from PIL import Image as PILImage, ImageTk
 from tkcalendar import Calendar
-import openpyxl
-from database import view_database  # Import the view_database function from database.py
+from database import view_database, save_results
+from report import export_to_excel, generate_pdf_report
 
 
 def create_gui():
-    window = ThemedTk(theme="ubuntu")  # Use the "ubuntu" theme
-    window.title("Soil Health Diagnostic System")
+    def open_email_link(event):
+        webbrowser.open("mailto:mzu22000486@mzu.edu.in")
 
-    # Set the main icon of the program
+    window = ThemedTk(theme="ubuntu")
+    window.title("Soil Health Diagnostic System (v0.2.404)")
+
     icon = PILImage.open("main.ico")
     window.iconphoto(True, ImageTk.PhotoImage(icon))
 
-    # Configure the weights for the rows and columns
     window.grid_columnconfigure(0, weight=1)
     window.grid_columnconfigure(1, weight=1)
-    window.grid_columnconfigure(2, weight=2)  # Give more weight to the third column
+    window.grid_columnconfigure(2, weight=2)
     window.grid_rowconfigure(0, weight=1)
 
-    # Load the image for the soil health indicators label
     label_image = PILImage.open('shi.png')
     label_image = label_image.resize((30, 30), PILImage.Resampling.LANCZOS)
     label_icon = ImageTk.PhotoImage(label_image)
 
-    # Load the image for the farmer information label
     farmer_image = PILImage.open('farmer.png')
     farmer_image = farmer_image.resize((30, 30), PILImage.Resampling.LANCZOS)
     farmer_icon = ImageTk.PhotoImage(farmer_image)
 
-    # Create a label with the image and text for farmer information
     farmer_label = ttk.Label(window, text="Farmer Information", font=("Helvetica", 14, "bold"), image=farmer_icon,
                              compound=tk.LEFT)
-    farmer_label.image = farmer_icon  # Keep a reference to the image to prevent garbage collection
+    farmer_label.image = farmer_icon
 
-    # Use the label as the labelwidget for the LabelFrame
     info_frame = ttk.LabelFrame(window, labelwidget=farmer_label)
     info_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
-    info_frame.grid_columnconfigure(1, weight=1)  # Make the entry fields expand
+    info_frame.grid_columnconfigure(1, weight=1)
 
-    # Create labels and entry fields for farmer information
-    info_labels = ['Test ID', 'Sample Collection Date', 'GPS Data (Lat, Long)', 'Name', 'Area (ha)', 'Gender',
-                   'Age',
-                   'Address', 'Mobile No.']
-    info_entries = []
-
-    # Test ID field
+    # Test ID input field
     test_id_label = ttk.Label(info_frame, text='Test ID')
     test_id_label.grid(row=0, column=0, sticky='w', padx=5, pady=5)
-    test_id_entry = ttk.Entry(info_frame)
+    test_id_entry = ttk.Entry(info_frame, validate='key',
+                              validatecommand=(
+                                  info_frame.register(lambda P: (P.isdigit() and len(P) <= 4) or P == ''), '%P'))
     test_id_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=5)
-    test_id_entry.config(validate='key',
-                         validatecommand=(
-                             info_frame.register(lambda P: (P.isdigit() and len(P) <= 4) or P == ''), '%P'))
-    test_id_entry.bind("<Tab>",
-                       lambda event, entry=test_id_entry: on_test_id_tab(event, info_frame, sample_date_entry))
-    info_entries.append(test_id_entry)
+    test_id_entry.bind("<Tab>", lambda event: on_test_id_tab(event, info_frame, sample_date_entry))
 
-    # Sample Collection Date field
+    # Sample Collection Date input field
     sample_date_label = ttk.Label(info_frame, text='Sample Collection Date')
     sample_date_label.grid(row=1, column=0, sticky='w', padx=5, pady=5)
     sample_date_entry = ttk.Entry(info_frame)
     sample_date_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
-    sample_date_entry.bind("<1>",
-                           lambda event, entry=sample_date_entry: on_sample_date_click(event, info_frame, entry))
-    info_entries.append(sample_date_entry)
+    sample_date_entry.bind("<1>", lambda event: on_sample_date_click(event, info_frame, sample_date_entry))
 
-    # GPS Data fields
+    # GPS Data input fields
     gps_label = ttk.Label(info_frame, text='GPS Data')
     gps_label.grid(row=2, column=0, sticky='w', padx=5, pady=5)
     gps_frame = ttk.Frame(info_frame)
@@ -87,194 +71,227 @@ def create_gui():
     gps_frame.grid_columnconfigure(1, weight=1)
 
     latitude_entry = ttk.Entry(gps_frame, validate='key',
-                               validatecommand=(info_frame.register(validate_gps_entry), '%P'))
+                               validatecommand=(
+                                   info_frame.register(lambda P: re.match(r'^-?\d{0,3}(\.\d{0,6})?$', P) is not None),
+                                   '%P'))
     latitude_entry.grid(row=0, column=0, sticky='ew', padx=(0, 5))
     latitude_label = ttk.Label(gps_frame, text="° N")
     latitude_label.grid(row=0, column=1, sticky='w')
 
     longitude_entry = ttk.Entry(gps_frame, validate='key',
-                                validatecommand=(info_frame.register(validate_gps_entry), '%P'))
+                                validatecommand=(
+                                    info_frame.register(lambda P: re.match(r'^-?\d{0,3}(\.\d{0,6})?$', P) is not None),
+                                    '%P'))
     longitude_entry.grid(row=0, column=2, sticky='ew', padx=(5, 0))
     longitude_label = ttk.Label(gps_frame, text="° E")
     longitude_label.grid(row=0, column=3, sticky='w')
 
-    info_entries.extend([latitude_entry, longitude_entry])
-
-    # Name field
+    # Name input field
     name_label = ttk.Label(info_frame, text='Name')
     name_label.grid(row=3, column=0, sticky='w', padx=5, pady=5)
-    name_entry = ttk.Entry(info_frame, validate='key', validatecommand=(info_frame.register(validate_name_entry), '%P'))
+    name_entry = ttk.Entry(info_frame, validate='key', validatecommand=(
+        info_frame.register(lambda P: re.match(r'^[A-Za-z.\s]{0,50}$', P) is not None), '%P'))
     name_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=5)
-    info_entries.append(name_entry)
 
-    # Area (ha) field
+    # Area input field
     area_label = ttk.Label(info_frame, text='Area (ha)')
     area_label.grid(row=4, column=0, sticky='w', padx=5, pady=5)
-    area_entry = ttk.Entry(info_frame, validate='key', validatecommand=(info_frame.register(validate_area_entry), '%P'))
+    area_entry = ttk.Entry(info_frame, validate='key', validatecommand=(
+        info_frame.register(lambda P: re.match(r'^\d{0,2}(\.\d{0,2})?$', P) is not None), '%P'))
     area_entry.grid(row=4, column=1, sticky='ew', padx=5, pady=5)
-    area_entry.bind("<Tab>", lambda event, entry=area_entry: on_area_tab(event, gender_dropdown))
-    info_entries.append(area_entry)
+    area_entry.bind("<Tab>", lambda event: on_area_tab(event, gender_dropdown))
 
-    # Gender field
+    # Gender dropdown field
     gender_label = ttk.Label(info_frame, text='Gender')
     gender_label.grid(row=5, column=0, sticky='w', padx=5, pady=5)
     gender_var = tk.StringVar()
-    gender_dropdown = ttk.Combobox(info_frame, textvariable=gender_var, values=['Male', 'Female', 'Others'], state='readonly')
+    gender_dropdown = ttk.Combobox(info_frame, textvariable=gender_var, values=['Male', 'Female', 'Others'],
+                                   state='readonly')
     gender_dropdown.grid(row=5, column=1, sticky='ew', padx=5, pady=5)
-    info_entries.append(gender_var)
 
-    # Age field
+    # Age input field
     age_label = ttk.Label(info_frame, text='Age')
     age_label.grid(row=6, column=0, sticky='w', padx=5, pady=5)
-    age_entry = ttk.Entry(info_frame)
+    age_entry = ttk.Entry(info_frame, validate='key',
+                          validatecommand=(
+                              info_frame.register(lambda P: (P.isdigit() and (1 <= int(P) <= 99)) or P == ''), '%P'))
     age_entry.grid(row=6, column=1, sticky='ew', padx=5, pady=5)
-    age_entry.config(validate='key',
-                     validatecommand=(
-                         info_frame.register(lambda P: (P.isdigit() and (1 <= int(P) <= 99)) or P == ''), '%P'))
-    info_entries.append(age_entry)
 
-    # Address field
+    # Address input field
     address_label = ttk.Label(info_frame, text='Address')
     address_label.grid(row=7, column=0, sticky='w', padx=5, pady=5)
     address_entry = ttk.Entry(info_frame, validate='key',
                               validatecommand=(info_frame.register(lambda P: len(P) <= 60), '%P'))
     address_entry.grid(row=7, column=1, sticky='ew', padx=5, pady=5)
-    info_entries.append(address_entry)
 
-    # Mobile No. field
+    # Mobile No. input field
     mobile_label = ttk.Label(info_frame, text='Mobile No.')
     mobile_label.grid(row=8, column=0, sticky='w', padx=5, pady=5)
-    mobile_entry = ttk.Entry(info_frame)
-    mobile_entry.grid(row=8, column=1, sticky='ew', padx=5, pady=5)
-    mobile_entry.config(validate='key', validatecommand=(
+    mobile_entry = ttk.Entry(info_frame, validate='key', validatecommand=(
         info_frame.register(lambda P: (P.isdigit() and len(P) <= 10) or P == ''), '%P'))
-    info_entries.append(mobile_entry)
+    mobile_entry.grid(row=8, column=1, sticky='ew', padx=5, pady=5)
 
-    # Load the image for the soil health indicators label
-    label_image = PILImage.open('shi.png')
-    label_image = label_image.resize((30, 30), PILImage.Resampling.LANCZOS)
-    label_icon = ImageTk.PhotoImage(label_image)
-
-    # Create a label with the image and text for soil health indicators
     label = ttk.Label(window, text="Soil Health Indicators", font=("Helvetica", 14, "bold"), image=label_icon,
                       compound=tk.LEFT)
-    label.image = label_icon  # Keep a reference to the image to prevent garbage collection
+    label.image = label_icon
 
-    # Use the label as the labelwidget for the LabelFrame
     input_frame = ttk.LabelFrame(window, labelwidget=label)
     input_frame.grid(row=0, column=1, sticky='nsew', padx=10, pady=10)
-    input_frame.grid_columnconfigure(1, weight=1)  # Make the entry fields expand
+    input_frame.grid_columnconfigure(1, weight=1)
 
-    # Create a frame to hold the visualization (radar chart and result labels)
     visualization_frame = ttk.Frame(window)
     visualization_frame.grid(row=0, column=2, sticky='nsew', padx=10, pady=10)
     visualization_frame.grid_rowconfigure(0, weight=1)
     visualization_frame.grid_columnconfigure(0, weight=1)
 
-    # Hide the visualization frame initially
     visualization_frame.grid_remove()
 
-    # Create labels and entry fields for each soil indicator
-    labels = []
-    entries = []
-    validation_functions = [
-        validate_soil_ph,
-        validate_nitrogen,
-        validate_phosphorus,
-        validate_potassium,
-        validate_electrical_conductivity,
-        validate_temperature,
-        validate_moisture,
-        validate_humidity
-    ]
+    # Soil pH input field
+    soil_ph_label = ttk.Label(input_frame, text='Soil pH (0-8.5)')
+    soil_ph_label.grid(row=0, column=0, sticky='w', padx=5, pady=5)
+    soil_ph_entry = ttk.Entry(input_frame, validate='key', validatecommand=(input_frame.register(
+        lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 8.50) if P else True), '%P'))
+    soil_ph_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=5)
 
-    for i, (indicator, validation_func) in enumerate(zip(soil_indicators, validation_functions)):
-        label = ttk.Label(input_frame, text=str(indicator))
-        label.grid(row=i, column=0, sticky='w', padx=5, pady=5)
-        entry = ttk.Entry(input_frame, validate='key', validatecommand=(input_frame.register(validation_func), '%P'))
-        entry.grid(row=i, column=1, sticky='ew', padx=5, pady=5)
-        labels.append(label)
-        entries.append(entry)
+    # Nitrogen input field
+    nitrogen_label = ttk.Label(input_frame, text='Nitrogen(10-500)(mg/kg)')
+    nitrogen_label.grid(row=1, column=0, sticky='w', padx=5, pady=5)
+    nitrogen_entry = ttk.Entry(input_frame, validate='key', validatecommand=(input_frame.register(
+        lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 500.00) if P else True), '%P'))
+    nitrogen_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
 
-    # Create a button to trigger the soil health assessment
+    # Phosphorus input field
+    phosphorus_label = ttk.Label(input_frame, text='Phosphorus(10-200)(mg/kg)')
+    phosphorus_label.grid(row=2, column=0, sticky='w', padx=5, pady=5)
+    phosphorus_entry = ttk.Entry(input_frame, validate='key', validatecommand=(input_frame.register(
+        lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 200.00) if P else True), '%P'))
+    phosphorus_entry.grid(row=2, column=1, sticky='ew', padx=5, pady=5)
+
+    # Potassium input field
+    potassium_label = ttk.Label(input_frame, text='Potassium(10-400)(mg/kg)')
+    potassium_label.grid(row=3, column=0, sticky='w', padx=5, pady=5)
+    potassium_entry = ttk.Entry(input_frame, validate='key', validatecommand=(input_frame.register(
+        lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 400.00) if P else True), '%P'))
+    potassium_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=5)
+
+    # Electrical Conductivity input field
+    electrical_conductivity_label = ttk.Label(input_frame, text='Electrical Conductivity(0-4)(dS/m)')
+    electrical_conductivity_label.grid(row=4, column=0, sticky='w', padx=5, pady=5)
+    electrical_conductivity_entry = ttk.Entry(input_frame, validate='key', validatecommand=(
+        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 4) if P else True),
+        '%P'))
+    electrical_conductivity_entry.grid(row=4, column=1, sticky='ew', padx=5, pady=5)
+
+    # Temperature input field
+    temperature_label = ttk.Label(input_frame, text='Temperature(0-50)(°C)')
+    temperature_label.grid(row=5, column=0, sticky='w', padx=5, pady=5)
+    temperature_entry = ttk.Entry(input_frame, validate='key', validatecommand=(
+        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 50.00) if P else True), '%P'))
+    temperature_entry.grid(row=5, column=1, sticky='ew', padx=5, pady=5)
+
+    # Moisture input field
+    moisture_label = ttk.Label(input_frame, text='Moisture(0-100)(%)')
+    moisture_label.grid(row=6, column=0, sticky='w', padx=5, pady=5)
+    moisture_entry = ttk.Entry(input_frame, validate='key', validatecommand=(
+        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 100) if P else True), '%P'))
+    moisture_entry.grid(row=6, column=1, sticky='ew', padx=5, pady=5)
+
+    # Humidity input field
+    humidity_label = ttk.Label(input_frame, text='Humidity(0-100)(%)')
+    humidity_label.grid(row=7, column=0, sticky='w', padx=5, pady=5)
+    humidity_entry = ttk.Entry(input_frame, validate='key', validatecommand=(
+        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 100) if P else True), '%P'))
+    humidity_entry.grid(row=7, column=1, sticky='ew', padx=5, pady=5)
+
     def assess_button_clicked():
+        indicator_ranges = {
+            'Nitrogen': (10, 500),
+            'Phosphorus': (10, 200),
+            'Potassium': (10, 400)
+        }
+
+        for indicator, (min_value, max_value) in indicator_ranges.items():
+            entry = None
+            if indicator == 'Nitrogen':
+                entry = nitrogen_entry
+            elif indicator == 'Phosphorus':
+                entry = phosphorus_entry
+            elif indicator == 'Potassium':
+                entry = potassium_entry
+
+            if entry:
+                value = entry.get()
+                if value:
+                    if float(value) < min_value or float(value) > max_value:
+                        tk.messagebox.showerror("Invalid Input",
+                                                f"Please enter a value between {min_value} and {max_value} for {indicator}.")
+                        entry.focus_set()
+                        return
+
+        indicator_values = [
+            float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+            float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+            float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+            float(potassium_entry.get()) if potassium_entry.get() else None,
+            float(electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+            float(temperature_entry.get()) if temperature_entry.get() else None,
+            float(moisture_entry.get()) if moisture_entry.get() else None,
+            float(humidity_entry.get()) if humidity_entry.get() else None
+        ]
+
+        latitude = float(latitude_entry.get().strip())
+        longitude = float(longitude_entry.get().strip())
+
+        normalized_values = []
+        for indicator, value in zip(soil_indicators, indicator_values):
+            if value is None:
+                normalized_values.append(None)
+            else:
+                normalized_value = (value - indicator.min_value) / (indicator.max_value - indicator.min_value)
+                normalized_values.append(normalized_value)
+
+        soil_health_score = evaluate_soil_health([value for value in normalized_values if value is not None])
+        recommendations = generate_crop_recommendations(soil_health_score)
+
+        data = {
+            'test_id': test_id_entry.get(),
+            'collection_date': sample_date_entry.get(),
+            'latitude': latitude,
+            'longitude': longitude,
+            'name': name_entry.get(),
+            'area': float(area_entry.get()) if area_entry.get() else None,
+            'gender': gender_var.get(),
+            'age': int(age_entry.get()) if age_entry.get() else None,
+            'address': address_entry.get(),
+            'mobile_no': mobile_entry.get(),
+            'soil_ph': indicator_values[0],
+            'nitrogen': indicator_values[1],
+            'phosphorus': indicator_values[2],
+            'potassium': indicator_values[3],
+            'electrical_conductivity': indicator_values[4],
+            'temperature': indicator_values[5],
+            'moisture': indicator_values[6],
+            'humidity': indicator_values[7],
+            'soil_health_score': soil_health_score,
+            'recommendations': recommendations
+        }
+        save_results(data)
+
         # Disable and grey out the input fields in the Farmer Information and Soil Health Indicators frame
         disable_input_fields()
-        for label, entry in zip(labels, entries):
-            label.config(foreground="gray")
-            entry.config(state=tk.DISABLED)
 
-        # Validate the input fields
-        try:
-            indicator_values = []
-            for entry, indicator in zip(entries, soil_indicators):
-                value = entry.get().strip()
-                if value == "":
-                    indicator_values.append(None)
-                else:
-                    value = float(value)
-                    if not indicator.min_value <= value <= indicator.max_value:
-                        raise ValueError(f"Invalid value for {indicator.name}: {value}")
-                    indicator_values.append(value)
+        visualize_results(indicator_values, soil_health_score, visualization_frame)
 
-            latitude = float(latitude_entry.get().strip())
-            longitude = float(longitude_entry.get().strip())
+        save_export_button.config(state=tk.NORMAL)
+        report_button.config(state=tk.DISABLED)
+        clear_button.config(state=tk.NORMAL)
 
-            if gender_var.get() == "":
-                raise ValueError("Please select a gender")
+        visualization_frame.grid()
 
-            # Normalize the indicator values based on their ranges
-            normalized_values = []
-            for indicator, value in zip(soil_indicators, indicator_values):
-                if value is None:
-                    normalized_values.append(None)
-                else:
-                    normalized_value = (value - indicator.min_value) / (indicator.max_value - indicator.min_value)
-                    normalized_values.append(normalized_value)
-
-            soil_health_score = evaluate_soil_health([value for value in normalized_values if value is not None])
-            recommendations = generate_crop_recommendations(soil_health_score)
-
-            data = {
-                'test_id': test_id_entry.get(),
-                'collection_date': sample_date_entry.get(),
-                'latitude': latitude,
-                'longitude': longitude,
-                'name': name_entry.get(),
-                'area': float(area_entry.get()),
-                'gender': gender_var.get(),
-                'age': int(age_entry.get()),
-                'address': address_entry.get(),
-                'mobile_no': mobile_entry.get(),
-                'soil_ph': indicator_values[0],
-                'nitrogen': indicator_values[1],
-                'phosphorus': indicator_values[2],
-                'potassium': indicator_values[3],
-                'electrical_conductivity': indicator_values[4],
-                'temperature': indicator_values[5],
-                'moisture': indicator_values[6],
-                'humidity': indicator_values[7],
-                'soil_health_score': soil_health_score,
-                'recommendations': recommendations
-            }
-
-            visualize_results(indicator_values, soil_health_score, visualization_frame)
-
-            save_results(data)
-
-            save_export_button.config(state=tk.NORMAL)
-            report_button.config(state=tk.DISABLED)
-            clear_button.config(state=tk.NORMAL)
-
-            # Show the visualization frame
-            visualization_frame.grid()
-        except ValueError as e:
-            tk.messagebox.showerror("Invalid Input", str(e))
-
-    # Create a function to clear all the input fields
+    # Function to clear all the input fields
     def clear_button_clicked():
         enable_input_fields()
-        clear_button.config(state=tk.NORMAL)  # Enable the 'Clear' button
+        clear_button.config(state=tk.NORMAL)
         assess_button.config(state=tk.DISABLED)
         save_export_button.config(state=tk.DISABLED)
         report_button.config(state=tk.DISABLED)
@@ -290,14 +307,24 @@ def create_gui():
         # Hide the visualization frame
         visualization_frame.grid_remove()
 
-        # Clear all input fields
-        for entry in info_entries:
-            if isinstance(entry, tk.Entry):
-                entry.delete(0, tk.END)  # Replace 'end' with tk.END
-            elif isinstance(entry, tk.StringVar):
-                entry.set('')
-        for entry in entries:
-            entry.delete(0, tk.END)  # Replace 'end' with tk.END
+        test_id_entry.delete(0, tk.END)
+        sample_date_entry.delete(0, tk.END)
+        latitude_entry.delete(0, tk.END)  # Clear the latitude entry field
+        longitude_entry.delete(0, tk.END)  # Clear the longitude entry field
+        name_entry.delete(0, tk.END)
+        area_entry.delete(0, tk.END)
+        gender_var.set('')
+        age_entry.delete(0, tk.END)
+        address_entry.delete(0, tk.END)
+        mobile_entry.delete(0, tk.END)
+        soil_ph_entry.delete(0, tk.END)
+        nitrogen_entry.delete(0, tk.END)
+        phosphorus_entry.delete(0, tk.END)
+        potassium_entry.delete(0, tk.END)
+        electrical_conductivity_entry.delete(0, tk.END)
+        temperature_entry.delete(0, tk.END)
+        moisture_entry.delete(0, tk.END)
+        humidity_entry.delete(0, tk.END)
 
     def generate_pdf_report_clicked():
         data = {
@@ -306,31 +333,58 @@ def create_gui():
             'latitude': float(latitude_entry.get().strip()),
             'longitude': float(longitude_entry.get().strip()),
             'name': name_entry.get(),
-            'area': float(area_entry.get()),
+            'area': float(area_entry.get()) if area_entry.get() else None,
             'gender': gender_var.get(),
-            'age': int(age_entry.get()),
+            'age': int(age_entry.get()) if age_entry.get() else None,
             'address': address_entry.get(),
             'mobile_no': mobile_entry.get(),
-            'soil_ph': float(entries[0].get()),
-            'nitrogen': float(entries[1].get()),
-            'phosphorus': float(entries[2].get()),
-            'potassium': float(entries[3].get()),
-            'electrical_conductivity': float(entries[4].get()),
-            'temperature': float(entries[5].get()),
-            'moisture': float(entries[6].get()),
-            'humidity': float(entries[7].get()),
-            'soil_health_score': assess_soil_health([float(entry.get()) for entry in entries]),
-            'recommendations': generate_crop_recommendations(
-                assess_soil_health([float(entry.get()) for entry in entries]))
+            'soil_ph': float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+            'nitrogen': float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+            'phosphorus': float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+            'potassium': float(potassium_entry.get()) if potassium_entry.get() else None,
+            'electrical_conductivity': float(
+                electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+            'temperature': float(temperature_entry.get()) if temperature_entry.get() else None,
+            'moisture': float(moisture_entry.get()) if moisture_entry.get() else None,
+            'humidity': float(humidity_entry.get()) if humidity_entry.get() else None,
+            'soil_health_score': assess_soil_health([
+                float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+                float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+                float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+                float(potassium_entry.get()) if potassium_entry.get() else None,
+                float(electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+                float(temperature_entry.get()) if temperature_entry.get() else None,
+                float(moisture_entry.get()) if moisture_entry.get() else None,
+                float(humidity_entry.get()) if humidity_entry.get() else None
+            ]),
+            'recommendations': generate_crop_recommendations(assess_soil_health([
+                float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+                float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+                float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+                float(potassium_entry.get()) if potassium_entry.get() else None,
+                float(electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+                float(temperature_entry.get()) if temperature_entry.get() else None,
+                float(moisture_entry.get()) if moisture_entry.get() else None,
+                float(humidity_entry.get()) if humidity_entry.get() else None
+            ]))
         }
         file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF Files", "*.pdf")],
                                                  initialfile=f"{data['test_id']}_report.pdf")
         if file_path:
-            indicator_values = [float(entry.get()) for entry in entries]  # Get the indicator values from the entries
-            generate_pdf_report(data, file_path, indicator_values)  # Pass indicator_values as an argument
+            indicator_values = [
+                float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+                float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+                float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+                float(potassium_entry.get()) if potassium_entry.get() else None,
+                float(electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+                float(temperature_entry.get()) if temperature_entry.get() else None,
+                float(moisture_entry.get()) if moisture_entry.get() else None,
+                float(humidity_entry.get()) if humidity_entry.get() else None
+            ]
+            generate_pdf_report(data, file_path, indicator_values)
             tk.messagebox.showinfo("Report Confirmation", "Soil Health Report Generated Successfully")
-            disable_all_elements()  # Disable all elements except for the 'New Test' button
-            new_test_button.config(state=tk.NORMAL)  # Enable the 'New Test' button
+            disable_all_elements()
+            new_test_button.config(state=tk.NORMAL)
 
     def save_export_button_clicked():
         test_id = test_id_entry.get()
@@ -342,88 +396,70 @@ def create_gui():
     def new_test_button_clicked():
         clear_button_clicked()
         enable_input_fields()
-        clear_button.config(state=tk.NORMAL)  # Enable the 'Clear' button
+        clear_button.config(state=tk.NORMAL)
         assess_button.config(state=tk.DISABLED)
         save_export_button.config(state=tk.DISABLED)
         report_button.config(state=tk.DISABLED)
 
-        # Clear the radar chart frame and soil health recommendations frames and labels
         for widget in visualization_frame.winfo_children():
             widget.destroy()
 
-        # Resize the program window to its normal state
-        window.geometry("")  # Set an empty geometry to reset the window size
-        window.update()  # Update the window to apply the changes
+        window.geometry("")
+        window.update()
 
-        # Hide the visualization frame
         visualization_frame.grid_remove()
 
-        # Clear all input fields
-        for entry in info_entries:
-            if isinstance(entry, tk.Entry):
-                entry.delete(0, tk.END)  # Replace 'end' with tk.END
-            elif isinstance(entry, tk.StringVar):
-                entry.set('')
-        for entry in entries:
-            entry.delete(0, tk.END)  # Replace 'end' with tk.END
-
     def enable_assess_button():
-        if all(entry.get() for entry in info_entries) and all(entry.get() for entry in entries):
+        if all(entry.get() for entry in [test_id_entry, sample_date_entry, latitude_entry, longitude_entry, name_entry,
+                                         area_entry, gender_var, age_entry, address_entry, mobile_entry, soil_ph_entry,
+                                         nitrogen_entry, phosphorus_entry, potassium_entry,
+                                         electrical_conductivity_entry, temperature_entry, moisture_entry,
+                                         humidity_entry]):
             assess_button.config(state=tk.NORMAL)
         else:
             assess_button.config(state=tk.DISABLED)
 
     def enable_input_fields():
-        test_id_label.config(foreground="black")
         test_id_entry.config(state=tk.NORMAL)
-        sample_date_label.config(foreground="black")
         sample_date_entry.config(state=tk.NORMAL)
-        sample_date_entry.bind("<1>",
-                               lambda event: on_sample_date_click(event, info_frame,
-                                                                  sample_date_entry))  # Pass sample_date_entry as an argument
-        gps_label.config(foreground="black")
+        sample_date_entry.bind("<1>", lambda event: on_sample_date_click(event, info_frame, sample_date_entry))
         latitude_entry.config(state=tk.NORMAL)
         longitude_entry.config(state=tk.NORMAL)
-        name_label.config(foreground="black")
         name_entry.config(state=tk.NORMAL)
-        area_label.config(foreground="black")
         area_entry.config(state=tk.NORMAL)
-        gender_label.config(foreground="black")
         gender_dropdown.config(state="readonly")
-        age_label.config(foreground="black")
         age_entry.config(state=tk.NORMAL)
-        address_label.config(foreground="black")
         address_entry.config(state=tk.NORMAL)
-        mobile_label.config(foreground="black")
         mobile_entry.config(state=tk.NORMAL)
-        for label, entry in zip(labels, entries):
-            label.config(foreground="black")
-            entry.config(state=tk.NORMAL)
+        soil_ph_entry.config(state=tk.NORMAL)
+        nitrogen_entry.config(state=tk.NORMAL)
+        phosphorus_entry.config(state=tk.NORMAL)
+        potassium_entry.config(state=tk.NORMAL)
+        electrical_conductivity_entry.config(state=tk.NORMAL)
+        temperature_entry.config(state=tk.NORMAL)
+        moisture_entry.config(state=tk.NORMAL)
+        humidity_entry.config(state=tk.NORMAL)
 
     def disable_input_fields():
-        test_id_label.config(foreground="gray")
         test_id_entry.config(state=tk.DISABLED)
-        sample_date_label.config(foreground="gray")
         sample_date_entry.config(state=tk.DISABLED)
-        sample_date_entry.unbind("<1>")  # Remove the click event binding
-        gps_label.config(foreground="gray")
+        sample_date_entry.unbind("<1>")
         latitude_entry.config(state=tk.DISABLED)
         longitude_entry.config(state=tk.DISABLED)
-        name_label.config(foreground="gray")
         name_entry.config(state=tk.DISABLED)
-        area_label.config(foreground="gray")
         area_entry.config(state=tk.DISABLED)
-        gender_label.config(foreground="gray")
         gender_dropdown.config(state=tk.DISABLED)
-        age_label.config(foreground="gray")
         age_entry.config(state=tk.DISABLED)
-        address_label.config(foreground="gray")
         address_entry.config(state=tk.DISABLED)
-        mobile_label.config(foreground="gray")
         mobile_entry.config(state=tk.DISABLED)
-        for label, entry in zip(labels, entries):
-            label.config(foreground="gray")
-            entry.config(state=tk.DISABLED)
+        soil_ph_entry.config(state=tk.DISABLED)
+        nitrogen_entry.config(state=tk.DISABLED)
+        phosphorus_entry.config(state=tk.DISABLED)
+        potassium_entry.config(state=tk.DISABLED)
+        electrical_conductivity_entry.config(state=tk.DISABLED)
+        temperature_entry.config(state=tk.DISABLED)
+        moisture_entry.config(state=tk.DISABLED)
+        humidity_entry.config(state=tk.DISABLED)
 
     def disable_all_elements():
         disable_input_fields()
@@ -439,11 +475,9 @@ def create_gui():
                     if isinstance(subwidget, (ttk.Button, ttk.Entry, ttk.Combobox)):
                         subwidget.configure(state=tk.DISABLED)
 
-    # Create a frame for the buttons
     button_frame = ttk.Frame(window)
-    button_frame.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="we")  # Use grid instead of pack
+    button_frame.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="we")
 
-    # Configure the button frame to expand horizontally
     button_frame.columnconfigure(0, weight=1)
     button_frame.columnconfigure(1, weight=1)
     button_frame.columnconfigure(2, weight=1)
@@ -451,7 +485,6 @@ def create_gui():
     button_frame.columnconfigure(4, weight=1)
     button_frame.columnconfigure(5, weight=1)
 
-    # Resize the images to fit the buttons
     button_width = 20
     button_height = 20
 
@@ -475,78 +508,107 @@ def create_gui():
     report_image = report_image.resize((button_width, button_height), PILImage.Resampling.LANCZOS)
     report_icon = ImageTk.PhotoImage(report_image)
 
-    # Load the 'database.png' icon
     database_icon = PILImage.open('database.png')
     database_icon = database_icon.resize((20, 20), PILImage.LANCZOS)
     database_photo = ImageTk.PhotoImage(database_icon)
 
-    # Create the 'New Test' button with the resized image
     new_test_button = ttk.Button(button_frame, text="New Test", command=new_test_button_clicked, image=new_icon,
                                  compound=tk.LEFT)
     new_test_button.image = new_icon
-    new_test_button.grid(row=0, column=0, padx=5, sticky="we")  # Use grid instead of pack
+    new_test_button.grid(row=0, column=0, padx=5, sticky="we")
 
-    # Create the 'Clear' button with the resized image
     clear_button = ttk.Button(button_frame, text="Clear", command=clear_button_clicked, image=clear_icon,
                               compound=tk.LEFT)
     clear_button.image = clear_icon
-    clear_button.grid(row=0, column=1, padx=5, sticky="we")  # Use grid instead of pack
-    clear_button.config(state=tk.NORMAL)  # Enable the 'Clear' button initially
+    clear_button.grid(row=0, column=1, padx=5, sticky="we")
+    clear_button.config(state=tk.DISABLED)
 
-    # Create the 'Assess Soil Health' button with the resized image
     assess_button = ttk.Button(button_frame, text="Assess Soil Health", command=assess_button_clicked,
                                image=assess_icon, compound=tk.LEFT)
     assess_button.image = assess_icon
-    assess_button.grid(row=0, column=2, padx=5, sticky="we")  # Use grid instead of pack
+    assess_button.grid(row=0, column=2, padx=5, sticky="we")
     assess_button.config(state=tk.DISABLED)
 
-    # Create the 'Save & Export' button with the resized image
     save_export_button = ttk.Button(button_frame, text="Save & Export", command=save_export_button_clicked,
                                     image=export_icon, compound=tk.LEFT)
     save_export_button.image = export_icon
-    save_export_button.grid(row=0, column=3, padx=5, sticky="we")  # Use grid instead of pack
+    save_export_button.grid(row=0, column=3, padx=5, sticky="we")
     save_export_button.config(state=tk.DISABLED)
 
-    # Create the 'Generate Report' button with the resized image
     report_button = ttk.Button(button_frame, text="Generate Report", command=generate_pdf_report_clicked,
                                image=report_icon, compound=tk.LEFT)
     report_button.image = report_icon
-    report_button.grid(row=0, column=4, padx=5, sticky="we")  # Use grid instead of pack
+    report_button.grid(row=0, column=4, padx=5, sticky="we")
     report_button.config(state=tk.DISABLED)
 
-    # Create the 'View Database' button with the icon
     view_database_button = ttk.Button(button_frame, text="View Database", command=lambda: view_database(window),
                                       image=database_photo, compound=tk.LEFT)
-    view_database_button.image = database_photo  # Keep a reference to the image to prevent garbage collection
-    view_database_button.grid(row=0, column=5, padx=5, sticky="we")  # Use grid instead of pack
+    view_database_button.image = database_photo
+    view_database_button.grid(row=0, column=5, padx=5, sticky="we")
 
-    # Disable input fields initially
     disable_input_fields()
 
-    # Bind the entry fields to enable the 'Assess Soil Health' button when all fields are filled
-    for entry in info_entries:
-        if isinstance(entry, tk.Entry):
-            entry.bind("<KeyRelease>", lambda event: enable_assess_button())
-        elif isinstance(entry, tk.StringVar):
-            entry.trace("w", lambda *args: enable_assess_button())
+    test_id_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    sample_date_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    latitude_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    longitude_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
 
-    for entry in entries:
-        entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    name_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    area_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    gender_var.trace("w", lambda *args: enable_assess_button())
+    age_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    address_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    mobile_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    soil_ph_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    nitrogen_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    phosphorus_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    potassium_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    electrical_conductivity_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    temperature_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    moisture_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+    humidity_entry.bind("<KeyRelease>", lambda event: enable_assess_button())
+
+    # DEVELOPER INFORMATION
+    bottom_frame = ttk.Frame(window)
+    bottom_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="we")
+    bottom_frame.columnconfigure(0, weight=1)
+
+    title_label = ttk.Label(bottom_frame, text="SOIL HEALTH DIAGNOSTIC SYSTEM (v0.2.404)", font=("Helvetica", 12, "bold"),
+                            justify="center")
+    title_label.grid(row=0, column=0, padx=5, pady=(0, 5))
+
+    mzu_logo = PILImage.open("mzu.png")
+    mzu_logo = mzu_logo.resize((80, 80), PILImage.LANCZOS)
+    mzu_photo = ImageTk.PhotoImage(mzu_logo)
+    mzu_label = ttk.Label(bottom_frame, image=mzu_photo)
+    mzu_label.image = mzu_photo
+    mzu_label.grid(row=3, column=0, padx=5, pady=(5, 0))
+
+    credentials_frame = ttk.Frame(bottom_frame)
+    credentials_frame.grid(row=1, column=0, padx=5, pady=(0, 5))
+
+    credentials_text = "Designed & Developed by:\nLALDINPUIA\nResearch Scholar"
+    credentials_label = ttk.Label(credentials_frame, text=credentials_text, font=("Helvetica", 10), justify="center")
+    credentials_label.pack()
+
+    email_link = tk.Label(credentials_frame, text="Email: mzu22000486@mzu.edu.in", font=("Helvetica", 10), fg="blue",
+                          cursor="hand2")
+    email_link.pack()
+    email_link.bind("<Button-1>", open_email_link)
+
+    department_text = "Department of Mathematics and Computer Science\nMizoram University"
+    department_label = ttk.Label(bottom_frame, text=department_text, font=("Helvetica", 10), justify="center")
+    department_label.grid(row=2, column=0, padx=5, pady=(5, 5))
 
     def visualize_results(indicator_values, soil_health_score, visualization_frame):
-        # Clear the existing visualization
         for widget in visualization_frame.winfo_children():
             widget.destroy()
-
-        # Create a frame to hold the radar chart and result labels
         visualization_content_frame = ttk.Frame(visualization_frame)
         visualization_content_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Create a frame to hold the radar chart
         radar_chart_frame = ttk.Frame(visualization_content_frame)
         radar_chart_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # Create a radar chart
         fig, ax = plt.subplots(figsize=(4.5, 4.5), subplot_kw={'projection': 'polar'})
         angles = np.linspace(0, 2 * np.pi, len(soil_indicators), endpoint=False)
         angles = np.concatenate((angles, [angles[0]]))
@@ -555,7 +617,6 @@ def create_gui():
         ax.plot(angles, indicator_values, 'o-', linewidth=1)
         ax.fill(angles, indicator_values, alpha=0.25)
 
-        # Modify the labels for each soil indicator
         labels = [
             'pH',
             'N\n(mg/kg)',
@@ -571,21 +632,18 @@ def create_gui():
         ax.set_title("Soil Health Indicators", fontsize=12)
         ax.grid(True)
 
-        # Embed the chart in the radar_chart_frame
         canvas = FigureCanvasTkAgg(fig, master=radar_chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Create a frame to hold the result labels
         result_frame = ttk.Frame(visualization_content_frame)
         result_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # Create a frame to center the result labels
         center_frame = ttk.Frame(result_frame)
         center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        # Create labels to display the soil health score and recommendations
-        result_label = ttk.Label(result_frame, text=f"Soil Health Score: {soil_health_score:.2f}", font=("Helvetica", 10, "bold"))
+        result_label = ttk.Label(result_frame, text=f"Soil Health Score: {soil_health_score:.2f}",
+                                 font=("Helvetica", 10, "bold"))
         result_label.pack(side=tk.TOP, padx=10)
 
         recommendations_text = f"\nCrop Recommendations:\n{generate_crop_recommendations(soil_health_score)}"
@@ -593,7 +651,6 @@ def create_gui():
                                           justify=tk.CENTER, wraplength=400)
         recommendations_label.pack(side=tk.BOTTOM, padx=10)
 
-        # Call the save_results function
         try:
             data = {
                 'test_id': test_id_entry.get(),
@@ -601,9 +658,9 @@ def create_gui():
                 'latitude': float(latitude_entry.get().strip()),
                 'longitude': float(longitude_entry.get().strip()),
                 'name': name_entry.get(),
-                'area': float(area_entry.get()),
+                'area': float(area_entry.get()) if area_entry.get() else None,
                 'gender': gender_var.get(),
-                'age': int(age_entry.get()),
+                'age': int(age_entry.get()) if age_entry.get() else None,
                 'address': address_entry.get(),
                 'mobile_no': mobile_entry.get(),
                 'soil_ph': indicator_values[0],
@@ -617,13 +674,13 @@ def create_gui():
                 'soil_health_score': soil_health_score,
                 'recommendations': generate_crop_recommendations(soil_health_score)
             }
-            save_results(data)
+            #save_results(data) # This was triggering  the Save results to the database Twice ;)
         except ValueError as e:
             tk.messagebox.showerror("Invalid Input", str(e))
 
     return window
 def on_sample_date_click(event, info_frame, sample_date_entry):
-    def on_select(sample_date_entry):
+    def on_select(event=None):
         selected_date = calendar.selection_get()
         sample_date_entry.delete(0, tk.END)
         sample_date_entry.insert(0, selected_date.strftime("%d-%m-%Y"))
@@ -633,8 +690,11 @@ def on_sample_date_click(event, info_frame, sample_date_entry):
     calendar_frame.grid(row=2, column=1, padx=5, pady=5, sticky='ew')
     calendar = Calendar(calendar_frame, selectmode='day', date_pattern='dd-mm-y')
     calendar.pack(fill='both', expand=True)
-    ttk.Button(calendar_frame, text="Select", command=lambda: on_select(sample_date_entry)).pack(pady=5)
 
+    calendar.bind("<<CalendarSelected>>", lambda event: on_select())
+
+    select_button = ttk.Button(calendar_frame, text="Select", command=on_select)
+    select_button.pack(pady=5)
 def on_test_id_tab(event, info_frame, sample_date_entry):
     on_sample_date_click(event, info_frame, sample_date_entry)
 
@@ -642,95 +702,12 @@ def on_area_tab(event, gender_dropdown):
     gender_dropdown.focus_set()
     gender_dropdown.event_generate('<Down>')
 
-def validate_gps_entry(P):
-    if P == "":
-        return True
-    try:
-        float_value = float(P)
-        return -180 <= float_value <= 180
-    except ValueError:
-        return False
+'''def show_input_range_error(indicator):
+    tk.messagebox.showerror("Invalid Input", f"Please enter a value between 10 and {indicator.max_value} for {indicator.name}.")
 
-def validate_name_entry(P):
-    if len(P) <= 60 and re.match(r"^[A-Za-z.\s]*$", P):
-        return True
-    else:
-        return False
-
-def validate_area_entry(P):
-    if P == "":
-        return True
-    elif re.match(r"^\d+(.\d{0,2})?$", P):
-        return 0 <= float(P) <= 50
-    else:
-        return False
-
-def validate_soil_ph(P):
-    if P == "":
-        return True
-    elif re.match(r"^\d+(.\d{0,2})?$", P):
-        return 0 <= float(P) <= 8.50
-    else:
-        return False
-
-def validate_nitrogen(P):
-    if P == "":
-        return True
-    try:
-        value = float(P)
-        return 10 <= value <= 500
-    except ValueError:
-        return False
-
-def validate_phosphorus(P):
-    if P == "":
-        return True
-    try:
-        value = float(P)
-        return 10 <= value <= 200
-    except ValueError:
-        return False
-
-def validate_potassium(P):
-    if P == "":
-        return True
-    try:
-        value = float(P)
-        return 10 <= value <= 400
-    except ValueError:
-        return False
-
-def validate_electrical_conductivity(P):
-    if P == "":
-        return True
-    elif re.match(r"^\d+(.\d{0,2})?$", P):
-        return 0 <= float(P) <= 4
-    else:
-        return False
-
-def validate_temperature(P):
-    if P == "":
-        return True
-    try:
-        value = int(P)
-        return 0 <= value <= 50
-    except ValueError:
-        return False
-
-def validate_moisture(P):
-    if P == "":
-        return True
-    try:
-        value = int(P)
-        return 0 <= value <= 100
-    except ValueError:
-        return False
-
-def validate_humidity(P):
-    if P == "":
-        return True
-    try:
-        value = int(P)
-        return 0 <= value <= 100
-    except ValueError:
-        return False
+def check_input_range(entry, indicator_name, min_value, max_value):
+    value = entry.get()
+    if value:
+        if float(value) < min_value or float(value) > max_value:
+            show_input_range_error(type('Indicator', (object,), {'name': indicator_name, 'max_value': max_value}))
+            entry.delete(0, tk.END)'''
