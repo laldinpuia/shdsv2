@@ -50,6 +50,16 @@ def create_gui():
     info_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
     info_frame.grid_columnconfigure(1, weight=1)
 
+    # Center the program window on the user's screen
+    window.update_idletasks()
+    window_width = 1024  # Set your desired window width
+    window_height = 600  # Set your desired window height
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    x = (screen_width // 2) - (window_width // 2)
+    y = (screen_height // 2) - (window_height // 2)
+    window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
     # Test ID input field
     test_id_label = ttk.Label(info_frame, text='Test ID')
     test_id_label.grid(row=0, column=0, sticky='w', padx=5, pady=5)
@@ -233,7 +243,7 @@ def create_gui():
         loading_frame.pack(fill=tk.BOTH, expand=True)
 
         loading_label = ttk.Label(loading_frame, text="Assessing Soil Health...",
-                                  font=("Helvetica", 12, "bold", "italic"))
+                                  font=("Helvetica", 10, "bold", "italic"))
         loading_label.pack(pady=10)
 
         progress_bar = ttk.Progressbar(loading_window, length=200, mode='indeterminate')
@@ -275,6 +285,14 @@ def create_gui():
                                                 f"Please enter a value between {min_value} and {max_value} for {indicator}.")
                         entry.focus_set()
                         return
+
+        # Check the 'Mobile No.' field
+        mobile_no = mobile_entry.get()
+        if not (mobile_no.isdigit() and len(mobile_no) == 10):
+            tk.messagebox.showerror("Invalid Mobile No.", "Please enter a valid 10-digit Mobile No.")
+            mobile_entry.focus_set()
+            mobile_entry.selection_range(0, tk.END)  # Highlight the text in the entry field
+            return
 
         loading_window, progress_bar = show_loading_window()
 
@@ -363,6 +381,16 @@ def create_gui():
         clear_button.config(state=tk.NORMAL)
 
         visualization_frame.grid()
+
+        # Re-center the window after displaying the radar chart
+        window.update_idletasks()
+        screen_width = window.winfo_screenwidth()
+        screen_height = window.winfo_screenheight()
+        window_width = window.winfo_width()
+        window_height = window.winfo_height()
+        x = (screen_width // 2) - (window_width // 2)
+        y = (screen_height // 2) - (window_height // 2)
+        window.geometry(f"+{x}+{y}")
 
     # Function to clear all the input fields
     def clear_button_clicked():
@@ -784,13 +812,3 @@ def on_test_id_tab(event, info_frame, sample_date_entry):
 def on_area_tab(event, gender_dropdown):
     gender_dropdown.focus_set()
     gender_dropdown.event_generate('<Down>')
-
-'''def show_input_range_error(indicator):
-    tk.messagebox.showerror("Invalid Input", f"Please enter a value between 10 and {indicator.max_value} for {indicator.name}.")
-
-def check_input_range(entry, indicator_name, min_value, max_value):
-    value = entry.get()
-    if value:
-        if float(value) < min_value or float(value) > max_value:
-            show_input_range_error(type('Indicator', (object,), {'name': indicator_name, 'max_value': max_value}))
-            entry.delete(0, tk.END)'''
