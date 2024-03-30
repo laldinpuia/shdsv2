@@ -26,8 +26,8 @@ def create_gui():
     window.iconphoto(True, ImageTk.PhotoImage(icon))
 
     window.grid_columnconfigure(0, weight=1)
-    window.grid_columnconfigure(1, weight=1)
-    window.grid_columnconfigure(2, weight=2)
+    window.grid_columnconfigure(1, weight=1)  # Set the weight of column 1 to 1
+    window.grid_columnconfigure(2, weight=0)  # Set the weight of column 2 to 0
     window.grid_rowconfigure(0, weight=1)
 
     label_image = PILImage.open('shi.png')
@@ -137,7 +137,8 @@ def create_gui():
 
     input_frame = ttk.LabelFrame(window, labelwidget=label)
     input_frame.grid(row=0, column=1, sticky='nsew', padx=10, pady=10)
-    input_frame.grid_columnconfigure(1, weight=1)
+    input_frame.grid_columnconfigure(0, weight=1)
+    input_frame.grid_columnconfigure(1, weight=2)  # Increase the weight of column 1
 
     visualization_frame = ttk.Frame(window)
     visualization_frame.grid(row=0, column=2, sticky='nsew', padx=10, pady=10)
@@ -476,7 +477,7 @@ def create_gui():
                         subwidget.configure(state=tk.DISABLED)
 
     button_frame = ttk.Frame(window)
-    button_frame.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="we")
+    button_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="we")
 
     button_frame.columnconfigure(0, weight=1)
     button_frame.columnconfigure(1, weight=1)
@@ -573,7 +574,7 @@ def create_gui():
     bottom_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="we")
     bottom_frame.columnconfigure(0, weight=1)
 
-    title_label = ttk.Label(bottom_frame, text="SOIL HEALTH DIAGNOSTIC SYSTEM (v0.2.404)", font=("Helvetica", 12, "bold"),
+    title_label = ttk.Label(bottom_frame, text="SOIL HEALTH DIAGNOSTIC SYSTEM (v0.2.404)", font=("Helvetica", 8, "bold"),
                             justify="center")
     title_label.grid(row=0, column=0, padx=5, pady=(0, 5))
 
@@ -588,16 +589,16 @@ def create_gui():
     credentials_frame.grid(row=1, column=0, padx=5, pady=(0, 5))
 
     credentials_text = "Designed & Developed by:\nLALDINPUIA\nResearch Scholar"
-    credentials_label = ttk.Label(credentials_frame, text=credentials_text, font=("Helvetica", 10), justify="center")
+    credentials_label = ttk.Label(credentials_frame, text=credentials_text, font=("Helvetica", 8), justify="center")
     credentials_label.pack()
 
-    email_link = tk.Label(credentials_frame, text="Email: mzu22000486@mzu.edu.in", font=("Helvetica", 10), fg="blue",
+    email_link = tk.Label(credentials_frame, text="Email: mzu22000486@mzu.edu.in", font=("Helvetica", 8), fg="green",
                           cursor="hand2")
     email_link.pack()
     email_link.bind("<Button-1>", open_email_link)
 
     department_text = "Department of Mathematics and Computer Science\nMizoram University"
-    department_label = ttk.Label(bottom_frame, text=department_text, font=("Helvetica", 10), justify="center")
+    department_label = ttk.Label(bottom_frame, text=department_text, font=("Helvetica", 8, "bold"), justify="center")
     department_label.grid(row=2, column=0, padx=5, pady=(5, 5))
 
     def visualize_results(indicator_values, soil_health_score, visualization_frame):
