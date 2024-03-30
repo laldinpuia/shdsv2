@@ -13,6 +13,10 @@ from PIL import Image as PILImage, ImageTk
 from tkcalendar import Calendar
 from database import view_database, save_results
 from report import export_to_excel, generate_pdf_report
+import threading
+import time
+import os
+import subprocess
 
 
 def create_gui():
@@ -147,6 +151,18 @@ def create_gui():
 
     visualization_frame.grid_remove()
 
+    # Create a separate frame for the loading screen
+    loading_frame = ttk.Frame(window)
+    loading_frame.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+    loading_frame.grid_remove()  # Hide the loading frame initially
+
+    # Create a label and a progress bar inside the loading frame
+    loading_label = ttk.Label(loading_frame, text="Assessing Soil Health...", font=("Helvetica", 16))
+    loading_label.pack(pady=10)
+
+    progress_bar = ttk.Progressbar(loading_frame, length=200, mode='indeterminate')
+    progress_bar.pack(pady=10)
+
     # Soil pH input field
     soil_ph_label = ttk.Label(input_frame, text='Soil pH (0-8.5)')
     soil_ph_label.grid(row=0, column=0, sticky='w', padx=5, pady=5)
@@ -155,28 +171,28 @@ def create_gui():
     soil_ph_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=5)
 
     # Nitrogen input field
-    nitrogen_label = ttk.Label(input_frame, text='Nitrogen(10-500)(mg/kg)')
+    nitrogen_label = ttk.Label(input_frame, text='Nitrogen(N)(10-500 mg/kg)')
     nitrogen_label.grid(row=1, column=0, sticky='w', padx=5, pady=5)
     nitrogen_entry = ttk.Entry(input_frame, validate='key', validatecommand=(input_frame.register(
         lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 500.00) if P else True), '%P'))
     nitrogen_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
 
     # Phosphorus input field
-    phosphorus_label = ttk.Label(input_frame, text='Phosphorus(10-200)(mg/kg)')
+    phosphorus_label = ttk.Label(input_frame, text='Phosphorus(P)(10-200 mg/kg)')
     phosphorus_label.grid(row=2, column=0, sticky='w', padx=5, pady=5)
     phosphorus_entry = ttk.Entry(input_frame, validate='key', validatecommand=(input_frame.register(
         lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 200.00) if P else True), '%P'))
     phosphorus_entry.grid(row=2, column=1, sticky='ew', padx=5, pady=5)
 
     # Potassium input field
-    potassium_label = ttk.Label(input_frame, text='Potassium(10-400)(mg/kg)')
+    potassium_label = ttk.Label(input_frame, text='Potassium(K)(10-400 mg/kg)')
     potassium_label.grid(row=3, column=0, sticky='w', padx=5, pady=5)
     potassium_entry = ttk.Entry(input_frame, validate='key', validatecommand=(input_frame.register(
         lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 400.00) if P else True), '%P'))
     potassium_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=5)
 
     # Electrical Conductivity input field
-    electrical_conductivity_label = ttk.Label(input_frame, text='Electrical Conductivity(0-4)(dS/m)')
+    electrical_conductivity_label = ttk.Label(input_frame, text='Electrical Conductivity(EC)(0-4 dS/m)')
     electrical_conductivity_label.grid(row=4, column=0, sticky='w', padx=5, pady=5)
     electrical_conductivity_entry = ttk.Entry(input_frame, validate='key', validatecommand=(
         input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 4) if P else True),
@@ -204,6 +220,37 @@ def create_gui():
         input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 100) if P else True), '%P'))
     humidity_entry.grid(row=7, column=1, sticky='ew', padx=5, pady=5)
 
+    # Create a label to display the dynamic message
+    assessing_label = ttk.Label(window, text="", font=("Helvetica", 12))
+    assessing_label.grid(row=1, column=0, columnspan=2, padx=10, pady=5)
+
+    def show_loading_window():
+        loading_window = tk.Toplevel(window)
+        loading_window.overrideredirect(True)  # Remove window decorations
+        loading_window.resizable(False, False)
+
+        loading_frame = ttk.Frame(loading_window)
+        loading_frame.pack(fill=tk.BOTH, expand=True)
+
+        loading_label = ttk.Label(loading_frame, text="Assessing Soil Health...",
+                                  font=("Helvetica", 12, "bold", "italic"))
+        loading_label.pack(pady=10)
+
+        progress_bar = ttk.Progressbar(loading_window, length=200, mode='indeterminate')
+        progress_bar.pack(pady=10)
+
+        # Center the loading window on the program window
+        loading_window.update_idletasks()
+        width = loading_window.winfo_width()
+        height = loading_window.winfo_height()
+        x = window.winfo_x() + (window.winfo_width() // 2) - (width // 2)
+        y = window.winfo_y() + (window.winfo_height() // 2) - (height // 2)
+        loading_window.geometry(f"{width}x{height}+{x}+{y}")
+
+        progress_bar.start()
+
+        return loading_window, progress_bar
+
     def assess_button_clicked():
         indicator_ranges = {
             'Nitrogen': (10, 500),
@@ -229,6 +276,19 @@ def create_gui():
                         entry.focus_set()
                         return
 
+        loading_window, progress_bar = show_loading_window()
+
+        # Disable the Assess Soil Health button
+        assess_button.config(state=tk.DISABLED)
+
+        # Start a separate thread to perform the assessment
+        threading.Thread(target=perform_assessment, args=(loading_window, progress_bar)).start()
+
+    def perform_assessment(loading_window, progress_bar):
+        # Simulating assessment calculation time
+        time.sleep(2)  # Adjust the time as needed
+
+        # Perform the assessment calculations
         indicator_values = [
             float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
             float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
@@ -276,8 +336,23 @@ def create_gui():
             'soil_health_score': soil_health_score,
             'recommendations': recommendations
         }
+
         save_results(data)
 
+        # Update the UI with the results
+        window.after(0, update_results, loading_window, progress_bar, indicator_values, soil_health_score)
+
+    def update_results(loading_window, progress_bar, indicator_values, soil_health_score):
+        # Stop the progress bar animation
+        progress_bar.stop()
+
+        # Close the loading window
+        loading_window.destroy()
+
+        # Enable the Assess Soil Health button
+        assess_button.config(state=tk.NORMAL)
+
+        # Update the UI with the assessment results
         # Disable and grey out the input fields in the Farmer Information and Soil Health Indicators frame
         disable_input_fields()
 
@@ -384,6 +459,13 @@ def create_gui():
             ]
             generate_pdf_report(data, file_path, indicator_values)
             tk.messagebox.showinfo("Report Confirmation", "Soil Health Report Generated Successfully")
+
+            # Open the generated PDF report in a new window
+            if os.name == 'nt':  # For Windows
+                os.startfile(file_path)
+            else:  # For macOS and Linux
+                subprocess.call(['open', file_path])
+
             disable_all_elements()
             new_test_button.config(state=tk.NORMAL)
 
