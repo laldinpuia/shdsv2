@@ -17,6 +17,15 @@ import threading
 import time
 import os
 import subprocess
+import io
+from PIL import Image, ImageTk
+from PyPDF2 import PdfReader
+from pdf2image import convert_from_path
+import win32api
+import win32print
+import win32ui
+import win32con
+import openpyxl
 
 
 def create_gui():
@@ -202,32 +211,32 @@ def create_gui():
     potassium_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=5)
 
     # Electrical Conductivity input field
-    electrical_conductivity_label = ttk.Label(input_frame, text='Electrical Conductivity(EC)(0-4 dS/m)')
+    electrical_conductivity_label = ttk.Label(input_frame, text='Electrical Conductivity(EC)(0-4.00 dS/m)')
     electrical_conductivity_label.grid(row=4, column=0, sticky='w', padx=5, pady=5)
     electrical_conductivity_entry = ttk.Entry(input_frame, validate='key', validatecommand=(
-        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 4) if P else True),
+        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0<= float(P) <= 4.00) if P else True),
         '%P'))
     electrical_conductivity_entry.grid(row=4, column=1, sticky='ew', padx=5, pady=5)
 
     # Temperature input field
-    temperature_label = ttk.Label(input_frame, text='Temperature(0-50)(°C)')
+    temperature_label = ttk.Label(input_frame, text='Temperature(1-50 °C)')
     temperature_label.grid(row=5, column=0, sticky='w', padx=5, pady=5)
     temperature_entry = ttk.Entry(input_frame, validate='key', validatecommand=(
-        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 50.00) if P else True), '%P'))
+        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (1 <= float(P) <= 50.00) if P else True), '%P'))
     temperature_entry.grid(row=5, column=1, sticky='ew', padx=5, pady=5)
 
     # Moisture input field
-    moisture_label = ttk.Label(input_frame, text='Moisture(0-100)(%)')
+    moisture_label = ttk.Label(input_frame, text='Moisture(1-100 %)')
     moisture_label.grid(row=6, column=0, sticky='w', padx=5, pady=5)
     moisture_entry = ttk.Entry(input_frame, validate='key', validatecommand=(
-        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 100) if P else True), '%P'))
+        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (1 <= float(P) <= 100) if P else True), '%P'))
     moisture_entry.grid(row=6, column=1, sticky='ew', padx=5, pady=5)
 
     # Humidity input field
-    humidity_label = ttk.Label(input_frame, text='Humidity(0-100)(%)')
+    humidity_label = ttk.Label(input_frame, text='Humidity(1-100 %)')
     humidity_label.grid(row=7, column=0, sticky='w', padx=5, pady=5)
     humidity_entry = ttk.Entry(input_frame, validate='key', validatecommand=(
-        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (0 <= float(P) <= 100) if P else True), '%P'))
+        input_frame.register(lambda P: re.match(r'^\d+(\.\d{0,2})?$', P) is not None and (1 <= float(P) <= 100) if P else True), '%P'))
     humidity_entry.grid(row=7, column=1, sticky='ew', padx=5, pady=5)
 
     # Create a label to display the dynamic message
@@ -355,8 +364,6 @@ def create_gui():
             'recommendations': recommendations
         }
 
-        save_results(data)
-
         # Update the UI with the results
         window.after(0, update_results, loading_window, progress_bar, indicator_values, soil_health_score)
 
@@ -381,6 +388,9 @@ def create_gui():
         clear_button.config(state=tk.NORMAL)
 
         visualization_frame.grid()
+
+        # Disable the 'Assess Soil Health' button immediately
+        assess_button.config(state=tk.DISABLED)
 
         # Re-center the window after displaying the radar chart
         window.update_idletasks()
@@ -488,21 +498,91 @@ def create_gui():
             generate_pdf_report(data, file_path, indicator_values)
             tk.messagebox.showinfo("Report Confirmation", "Soil Health Report Generated Successfully")
 
+            # Disable the 'Generate' button immediately
+            report_button.config(state=tk.DISABLED)
+
             # Open the generated PDF report in a new window
-            if os.name == 'nt':  # For Windows
-                os.startfile(file_path)
-            else:  # For macOS and Linux
-                subprocess.call(['open', file_path])
+            open_pdf_window(file_path)
 
             disable_all_elements()
             new_test_button.config(state=tk.NORMAL)
 
     def save_export_button_clicked():
-        test_id = test_id_entry.get()
-        file_path = export_to_excel(test_id)
+        data = {
+            'test_id': test_id_entry.get(),
+            'collection_date': sample_date_entry.get(),
+            'latitude': float(latitude_entry.get().strip()) if latitude_entry.get().strip() else None,
+            'longitude': float(longitude_entry.get().strip()) if longitude_entry.get().strip() else None,
+            'name': name_entry.get(),
+            'area': float(area_entry.get()) if area_entry.get() else None,
+            'gender': gender_var.get(),
+            'age': int(age_entry.get()) if age_entry.get() else None,
+            'address': address_entry.get(),
+            'mobile_no': mobile_entry.get(),
+            'soil_ph': float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+            'nitrogen': float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+            'phosphorus': float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+            'potassium': float(potassium_entry.get()) if potassium_entry.get() else None,
+            'electrical_conductivity': float(
+                electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+            'temperature': float(temperature_entry.get()) if temperature_entry.get() else None,
+            'moisture': float(moisture_entry.get()) if moisture_entry.get() else None,
+            'humidity': float(humidity_entry.get()) if humidity_entry.get() else None,
+            'soil_health_score': assess_soil_health([
+                float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+                float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+                float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+                float(potassium_entry.get()) if potassium_entry.get() else None,
+                float(electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+                float(temperature_entry.get()) if temperature_entry.get() else None,
+                float(moisture_entry.get()) if moisture_entry.get() else None,
+                float(humidity_entry.get()) if humidity_entry.get() else None
+            ]),
+            'recommendations': generate_crop_recommendations(assess_soil_health([
+                float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+                float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+                float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+                float(potassium_entry.get()) if potassium_entry.get() else None,
+                float(electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+                float(temperature_entry.get()) if temperature_entry.get() else None,
+                float(moisture_entry.get()) if moisture_entry.get() else None,
+                float(humidity_entry.get()) if humidity_entry.get() else None
+            ]))
+        }
+
+        # Save the data to the database
+        save_results(data)
+
+        file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")],
+                                                 initialfile=f"{data['test_id']}_test.xlsx")
         if file_path:
-            tk.messagebox.showinfo("Save Confirmation", "Soil Test Report Saved Successfully")
+            workbook = openpyxl.Workbook()
+            sheet = workbook.active
+            header = ["Test ID", "Collection Date", "Latitude", "Longitude", "Name", "Area (ha)", "Gender", "Age",
+                      "Address", "Mobile No.", "Soil pH", "Nitrogen", "Phosphorus", "Potassium",
+                      "Electrical Conductivity", "Temperature", "Moisture", "Humidity", "Soil Health Score",
+                      "Recommendations"]
+            sheet.append(header)
+
+            # Format the values based on their respective data types
+            formatted_values = []
+            for i, value in enumerate(data.values()):
+                if i in [2, 3, 5, 10, 11, 12, 13, 14, 15, 16, 17, 18]:
+                    formatted_values.append(float(value) if value else None)
+                elif i == 7:
+                    formatted_values.append(int(value) if value else None)
+                else:
+                    formatted_values.append(value)
+
+            sheet.append(formatted_values)
+            workbook.save(file_path)
+            messagebox.showinfo("Save Confirmation", "Results exported to Excel successfully.")
+
+            # Enable the 'Generate Report' button
             report_button.config(state=tk.NORMAL)
+
+            # Disable the 'Save & Export' button immediately
+            save_export_button.config(state=tk.DISABLED)
 
     def new_test_button_clicked():
         clear_button_clicked()
@@ -785,9 +865,185 @@ def create_gui():
                 'soil_health_score': soil_health_score,
                 'recommendations': generate_crop_recommendations(soil_health_score)
             }
-            #save_results(data) # This was triggering  the Save results to the database Twice ;)
+
         except ValueError as e:
             tk.messagebox.showerror("Invalid Input", str(e))
+
+    # Open PDF Files
+    def open_pdf_window(file_path):
+        # Create a new window for the PDF viewer
+        pdf_window = tk.Toplevel(window)
+        pdf_window.title(f"Soil Health Report of: {os.path.basename(file_path)}")
+
+        # Create a canvas to display the PDF pages
+        canvas = tk.Canvas(pdf_window, width=768, height=1024)
+        canvas.pack(fill=tk.BOTH, expand=True)
+
+        # Create a scrollbar for the canvas
+        scrollbar = ttk.Scrollbar(pdf_window, orient=tk.VERTICAL, command=canvas.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Open the PDF file
+        with open(file_path, 'rb') as file:
+            pdf_reader = PdfReader(file)
+            num_pages = len(pdf_reader.pages)
+
+            for page_num in range(num_pages):
+                # Render each page as an image using pdf2image
+                page_images = convert_from_path(file_path, first_page=page_num + 1, last_page=page_num + 1)
+
+                for img in page_images:
+                    img = img.resize((768, 1024), Image.LANCZOS)
+                    photo = ImageTk.PhotoImage(img)
+
+                    # Display the image on the canvas
+                    canvas.create_image(0, page_num * 600, anchor=tk.NW, image=photo)
+                    canvas.image = photo
+
+        # Configure the canvas scroll region
+        canvas.configure(scrollregion=canvas.bbox(tk.ALL))
+
+        # Bind mouse wheel events for zooming in/out
+        def zoom(event):
+            if event.delta > 0:
+                canvas.scale(tk.ALL, event.x, event.y, 1.1, 1.1)
+            elif event.delta < 0:
+                canvas.scale(tk.ALL, event.x, event.y, 0.9, 0.9)
+            canvas.configure(scrollregion=canvas.bbox(tk.ALL))
+
+        canvas.bind("<MouseWheel>", zoom)
+
+        # Create a frame for the buttons
+        button_frame = ttk.Frame(pdf_window)
+        button_frame.pack(side=tk.BOTTOM, pady=10)
+
+        # Create the Print button
+        print_button = ttk.Button(button_frame, text="Print", command=lambda: print_pdf(file_path))
+        print_button.pack(side=tk.LEFT, padx=10)
+
+        # Create the Close button
+        close_button = ttk.Button(button_frame, text="Close", command=pdf_window.destroy)
+        close_button.pack(side=tk.RIGHT, padx=10)
+
+        # Center the PDF viewer window on the screen
+        pdf_window.update_idletasks()
+        screen_width = pdf_window.winfo_screenwidth()
+        screen_height = pdf_window.winfo_screenheight()
+        window_width = pdf_window.winfo_width()
+        window_height = pdf_window.winfo_height()
+        x = (screen_width // 2) - (window_width // 2)
+        y = (screen_height // 2) - (window_height // 2)
+        pdf_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+    # Print PDF using Github Codepilot
+
+    def print_pdf(file_path):
+        try:
+            # Get the default printer
+            default_printer = win32print.GetDefaultPrinter()
+
+            # Access defaults
+            PRINTER_DEFAULTS = {"DesiredAccess": win32print.PRINTER_ALL_ACCESS}
+
+            # Open printer to get the handle
+            pHandle = win32print.OpenPrinter(default_printer, PRINTER_DEFAULTS)
+
+            # Get the current properties
+            properties = win32print.GetPrinter(pHandle, 2)
+
+            # Get the devmode
+            pDevModeObj = properties['pDevMode']
+
+            # Open the printer properties and pass the devmode
+            result = win32print.DocumentProperties(0, pHandle, default_printer, pDevModeObj, pDevModeObj,
+                                                   win32con.DM_PROMPT)
+
+            if result == win32con.IDOK:  # IDOK
+                # Reassign the devmode
+                properties['pDevMode'] = pDevModeObj
+
+                # Save the printer settings
+                win32print.SetPrinter(pHandle, 2, properties, 0)
+
+                # Print the PDF file using the default printer without opening the default PDF reader
+                win32api.ShellExecute(0, "printto", file_path, f'"{default_printer}"', ".", 0)
+
+                messagebox.showinfo("Print", f"'{os.path.basename(file_path)}' has been sent to the printer.")
+            else:
+                messagebox.showinfo("Print", "Printing canceled.")
+
+            # Close the printer
+            win32print.ClosePrinter(pHandle)
+        except Exception as e:
+            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")
+
+    '''# Print PDF using Ghostscript
+    def print_pdf(file_path):
+        try:
+            # Get the default printer
+            default_printer = win32print.GetDefaultPrinter()
+
+            # Construct the Ghostscript command
+            # Note: Adjust the path to gswin64c.exe as needed for your Ghostscript installation
+            gs_command = [
+                "gswin64c.exe",
+                "-dNOPAUSE",
+                "-dBATCH",
+                "-dQUIET",
+                "-dPrinted",
+                f'-sDEVICE=mswinpr2',
+                f'-sOutputFile=%printer%{default_printer}',
+                file_path
+            ]
+
+            # Execute the command
+            subprocess.run(gs_command, check=True)
+
+            messagebox.showinfo("Print", f"'{os.path.basename(file_path)}' has been sent to the printer.")
+        except Exception as e:
+            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")'''
+
+    '''# Print PDF using win32print
+    def print_pdf(file_path):
+        # Print the PDF file
+        try:
+            # Get the default printer
+            default_printer = win32print.GetDefaultPrinter()
+
+            # Access defaults
+            PRINTER_DEFAULTS = {"DesiredAccess": win32print.PRINTER_ALL_ACCESS}
+
+            # Open printer to get the handle
+            pHandle = win32print.OpenPrinter(default_printer, PRINTER_DEFAULTS)
+
+            # Get the current properties
+            properties = win32print.GetPrinter(pHandle, 2)
+
+            # Get the devmode
+            pDevModeObj = properties['pDevMode']
+
+            # Open the printer properties and pass the devmode
+            result = win32print.DocumentProperties(0, pHandle, default_printer, pDevModeObj, None, 5)
+
+            if result == 1:  # IDOK
+                # Reassign the devmode
+                properties['pDevMode'] = pDevModeObj
+
+                # Save the printer settings
+                win32print.SetPrinter(pHandle, 2, properties, 0)
+
+                # Print the PDF file using the default printer without opening the default PDF reader
+                win32api.ShellExecute(0, "printto", file_path, f'"{default_printer}"', ".", 0)
+
+                messagebox.showinfo("Print", f"'{os.path.basename(file_path)}' has been sent to the printer.")
+            else:
+                messagebox.showinfo("Print", "Printing canceled.")
+
+            # Close the printer
+            win32print.ClosePrinter(pHandle)
+        except Exception as e:
+            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")'''
 
     return window
 def on_sample_date_click(event, info_frame, sample_date_entry):
