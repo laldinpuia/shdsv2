@@ -936,7 +936,51 @@ def create_gui():
         y = (screen_height // 2) - (window_height // 2)
         pdf_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-    # Print PDF using Github Codepilot
+    # Claude 3 Opus Print PDF
+    def print_pdf(file_path):
+        try:
+            # Create a DC (Device Context) object for the default printer
+            printer_name = win32print.GetDefaultPrinter()
+            hDC = win32ui.CreateDC()
+            hDC.CreatePrinterDC(printer_name)
+
+            # Create a PrintDialog object
+            pd = win32ui.CreatePrintDialog(hDC)
+
+            # Initialize the PrintDialog object
+            pd.DoModal()
+
+            # Get the selected print settings
+            devmode = pd.GetDevMode()
+
+            # Access defaults
+            PRINTER_DEFAULTS = {"DesiredAccess": win32print.PRINTER_ALL_ACCESS}
+
+            # Open printer to get the handle
+            pHandle = win32print.OpenPrinter(printer_name, PRINTER_DEFAULTS)
+
+            # Get the current properties
+            properties = win32print.GetPrinter(pHandle, 2)
+
+            # Set the devmode
+            properties['pDevMode'] = devmode
+
+            # Save the printer settings
+            win32print.SetPrinter(pHandle, 2, properties, 0)
+
+            # Print the PDF file using the selected printer without opening the default PDF reader
+            win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+
+            messagebox.showinfo("Print", f"'{os.path.basename(file_path)}' has been sent to the printer.")
+
+            # Close the printer
+            win32print.ClosePrinter(pHandle)
+        except Exception as e:
+            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")
+
+
+
+    '''# Print PDF using Github Codepilot
 
     def print_pdf(file_path):
         try:
@@ -976,7 +1020,7 @@ def create_gui():
             # Close the printer
             win32print.ClosePrinter(pHandle)
         except Exception as e:
-            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")
+            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")'''
 
     '''# Print PDF using Ghostscript
     def print_pdf(file_path):
