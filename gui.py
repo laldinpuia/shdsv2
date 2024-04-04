@@ -885,6 +885,12 @@ def create_gui():
                                  font=("Helvetica", 10, "bold"))
         result_label.pack(side=tk.TOP, padx=10)
 
+        # Calculate the rating
+        rating = generate_rating(soil_health_score)
+
+        rating_label = ttk.Label(result_frame, text=f"\nRating: {rating}", font=("Helvetica", 10, "bold"))
+        rating_label.pack(side=tk.TOP, padx=10)
+
         recommendations_text = f"\nCrop Recommendations:\n{generate_crop_recommendations(soil_health_score)}"
         recommendations_label = ttk.Label(result_frame, text=recommendations_text, font=("Helvetica", 10, "bold"),
                                           justify=tk.CENTER, wraplength=400)
