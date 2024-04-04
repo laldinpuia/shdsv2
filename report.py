@@ -1,7 +1,7 @@
 from reportlab.lib.utils import ImageReader
-from reportlab.platypus import SimpleDocTemplate, Image as ReportLabImage, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER
@@ -14,23 +14,44 @@ import io
 import sqlite3
 import openpyxl
 from tkinter import filedialog
+from datetime import datetime
+
 
 def generate_pdf_report(data, file_path, indicator_values):
-    report = SimpleDocTemplate(file_path, pagesize=letter)
+    report = SimpleDocTemplate(file_path, pagesize=A4)
     styles = getSampleStyleSheet()
 
-    # Create a custom style for Heading3 if it doesn't exist
-    if 'Heading3' not in styles:
-        styles.add(ParagraphStyle(name='Heading3', fontName='Helvetica-Bold', fontSize=12, alignment=TA_CENTER))
+    # Define custom color palette
+    primary_color = colors.HexColor('#2E8B57')  # Green
+    secondary_color = colors.HexColor('#000000')  # Black
+    tertiary_color = colors.HexColor('#808080')  # Grey
+    accent_color = colors.HexColor('#FFFFFF')  # White
 
-    # Modify the title style to use a smaller font size and center alignment
-    styles["Title"].fontSize = 16
-    styles["Title"].alignment = TA_CENTER
+    # Define custom font styles
+    if 'MainTitle' not in styles:
+        styles.add(ParagraphStyle(name='MainTitle', fontName='Helvetica-Bold', fontSize=16, textColor=primary_color,
+                                  spaceAfter=6, alignment=TA_CENTER))
+    if 'TableTitle' not in styles:
+        styles.add(ParagraphStyle(name='TableTitle', fontName='Helvetica-Bold', fontSize=12, textColor=secondary_color,
+                                  spaceAfter=4, alignment=TA_CENTER))
+    if 'BodyText' not in styles:
+        styles.add(ParagraphStyle(name='BodyText', fontName='Helvetica', fontSize=8, textColor=secondary_color,
+                                  spaceAfter=4))
 
-    report_elements = [Paragraph("Soil Health Report", styles["Title"]), Spacer(1, 0.2 * inch)]
+    # Create the report elements
+    report_elements = []
 
-    # Farmer Information
-    farmer_info = [
+    # Add the main image
+    main_image = Image('main.png', width=0.5 * inch, height=0.5 * inch)
+    report_elements.append(main_image)
+    report_elements.append(Spacer(1, 0.1 * inch))
+
+    # Add the main title
+    report_elements.append(Paragraph('Soil Health Diagnostic System Report', styles['MainTitle']))
+    report_elements.append(Spacer(1, 0.2 * inch))
+
+    # Add farmer information and sample details tables
+    farmer_info_data = [
         ['Name', data['name']],
         ['Gender', data['gender']],
         ['Age', data['age']],
@@ -38,106 +59,79 @@ def generate_pdf_report(data, file_path, indicator_values):
         ['Mobile No.', data['mobile_no']],
         ['Area (ha)', data['area']]
     ]
-    farmer_table = Table(farmer_info)
-    farmer_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+    farmer_info_table = Table(farmer_info_data, colWidths=[1.0 * inch, 2.5 * inch])
+    farmer_info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), secondary_color),
+        ('TEXTCOLOR', (0, 0), (-1, 0), accent_color),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('BACKGROUND', (0, 1), (-1, -1), accent_color),
+        ('TEXTCOLOR', (0, 1), (-1, -1), secondary_color),
         ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('TOPPADDING', (0, 1), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
     ]))
 
-    # Soil Sample Details
-    sample_details = [
+    sample_details_data = [
         ['Test ID', data['test_id']],
-        ['Sample Collection Date', data['collection_date']],
-        ['GPS Data', f"Latitude: {data['latitude']}, Longitude: {data['longitude']}"]
+        ['Sample Date', data['collection_date']],
+        ['GPS Data', f"Lat: {data['latitude']}° N, Long: {data['longitude']}° E"]
     ]
-    sample_details_table = Table(sample_details)
+    sample_details_table = Table(sample_details_data, colWidths=[1.5 * inch, 2.0 * inch])
     sample_details_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('BACKGROUND', (0, 0), (-1, 0), secondary_color),
+        ('TEXTCOLOR', (0, 0), (-1, 0), accent_color),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('BACKGROUND', (0, 1), (-1, -1), accent_color),
+        ('TEXTCOLOR', (0, 1), (-1, -1), secondary_color),
         ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('TOPPADDING', (0, 1), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
     ]))
 
-    # Create a table to hold both farmer information and sample details tables
-    info_table = Table([[farmer_table, sample_details_table]])
+    info_table = Table([[farmer_info_table, Spacer(1.0 * inch, 0), sample_details_table]],
+                       colWidths=[None, 0.2 * inch, None])
     info_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 0),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('LEFTPADDING', (0, 0), (0, -1), 0),  # Left padding for the first column
+        ('RIGHTPADDING', (0, -1), (0, -1), 0),  # Right padding for the last column
         ('TOPPADDING', (0, 0), (-1, -1), 0),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
     ]))
 
-    farmer_info_heading = Paragraph("Farmer Information", styles["Heading3"])
-    sample_details_heading = Paragraph("Soil Sample Details", styles["Heading3"])
-
-    report_elements.append(Table([[farmer_info_heading, sample_details_heading]]))
     report_elements.append(info_table)
     report_elements.append(Spacer(1, 0.2 * inch))
 
-    # Soil Health Indicators
-    table_data = [['Soil Health Indicators', 'Values', 'Normal Values']]
-    for indicator in soil_indicators:
-        indicator_name = indicator.name.lower().replace(' ', '_').replace('(', '').replace(')', '')
-        value = data.get(indicator_name, 'N/A')
-        normal_value = indicator.optimal_range
-        table_data.append([str(indicator), value, f"{normal_value[0]} - {normal_value[1]} {indicator.unit}"])
-    table_data.append(['Soil Health Score', f"{data['soil_health_score']:.2f}", '0 - 1'])
-    table_data.append(['Rating', generate_rating(data['soil_health_score']), ''])
-    table_data.append(['Crop Recommendations', generate_crop_recommendations(data['soil_health_score']), ''])
-
-    table = Table(table_data)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-        ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('TOPPADDING', (0, 1), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
-    ]))
-
-    report_elements.append(Paragraph("Soil Health Indicators", styles["Heading3"]))
-    report_elements.append(table)
-    report_elements.append(Spacer(1, 0.2 * inch))
+    # Add soil health indicators table
+    soil_health_data = [
+        ['Indicators', 'Value', 'Normal Range'],
+        ['Soil pH', data['soil_ph'], '6.0 - 7.5'],
+        ['Nitrogen (N)(mg/kg)', data['nitrogen'], '50 - 250 mg/kg'],
+        ['Phosphorus (P)(mg/kg)', data['phosphorus'], '20 - 100 mg/kg'],
+        ['Potassium (K)(mg/kg)', data['potassium'], '50 - 200 mg/kg'],
+        ['Electrical Conductivity \n(EC)(dS/m)', data['electrical_conductivity'], '0 - 2 dS/m'],
+        ['Temperature (°C)', data['temperature'], '10 - 30 °C'],
+        ['Moisture (%)', data['moisture'], '20 - 80 %'],
+        ['Humidity (%)', data['humidity'], '30 - 70 %']
+    ]
 
     # Create the radar chart
-    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw={'projection': 'polar'})
+    fig, ax = plt.subplots(figsize=(4, 4), subplot_kw={'projection': 'polar'})
     angles = np.linspace(0, 2 * np.pi, len(soil_indicators), endpoint=False)
     angles = np.concatenate((angles, [angles[0]]))
     indicator_values = np.concatenate((indicator_values, [indicator_values[0]]))
 
     ax.plot(angles, indicator_values, 'o-', linewidth=1)
     ax.fill(angles, indicator_values, alpha=0.25)
-
-    # Modify the labels for each soil indicator
 
     labels = [
         'pH',
@@ -149,18 +143,105 @@ def generate_pdf_report(data, file_path, indicator_values):
         'Moist\n(%)',
         'Humid\n(%)'
     ]
-    ax.set_thetagrids(angles[:-1] * 180 / np.pi, labels, fontsize=8)
-    ax.set_title("Soil Health Indicators", fontsize=12)
+    ax.set_thetagrids(angles[:-1] * 180 / np.pi, labels, fontsize=6)
+    ax.set_title("Soil Health Indicators", fontsize=10)
     ax.grid(True)
 
-    # Save the radar chart as an image in memory
     chart_buffer = io.BytesIO()
     plt.savefig(chart_buffer, format='png', dpi=300, bbox_inches='tight')
     chart_buffer.seek(0)
-    chart_img = ReportLabImage(chart_buffer, width=3 * inch, height=3 * inch)
-    report_elements.append(chart_img)
+    chart_img = Image(chart_buffer, width=3 * inch, height=3 * inch)
 
+    # Get the height of the chart_img
+    chart_height = chart_img.drawHeight
+
+    # Adjust the rowHeights of the soil_health_table to match the chart_height
+    soil_health_table = Table(soil_health_data, colWidths=[1.5 * inch, 0.6 * inch, 1.3 * inch],
+                              rowHeights=[chart_height / len(soil_health_data)] * len(soil_health_data))
+    soil_health_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), primary_color),
+        ('TEXTCOLOR', (0, 0), (-1, 0), accent_color),
+        ('ALIGN', (0, 0), (-1, 0), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F0FFF0')),
+        ('TEXTCOLOR', (0, 1), (-1, -1), secondary_color),
+        ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+    ]))
+
+    indicators_table = Table([[soil_health_table, Spacer(0.2 * inch, 0), [Spacer(0.5 * inch, 0), chart_img]]],
+                             colWidths=[None, 0.2 * inch, None])
+    indicators_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align tops of cells
+        ('LEFTPADDING', (0, 0), (0, -1), 0),  # Left padding for the first column
+        ('RIGHTPADDING', (-1, 0), (-1, -1), 0),  # Right padding for the last column
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+
+    report_elements.append(indicators_table)
+    report_elements.append(Spacer(1, 0.2 * inch))
+
+    # Add 'Overall Result' table
+    value_ranges_text = "Very Poor, Poor,\nBelow Average, Average,\nAbove Average, Good,\nExcellent"
+    overall_result_data = [
+        ['Result', 'Value', 'Range'],
+        ['Soil Health Score', data['soil_health_score'], '0 - 1'],
+        ['Rating', data['rating'], value_ranges_text],
+        ['Crop Recommendations', data['crop_recommendations'], '']
+    ]
+    overall_result_table = Table(overall_result_data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch])
+    overall_result_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), primary_color),
+        ('TEXTCOLOR', (0, 0), (-1, 0), accent_color),
+        ('ALIGN', (0, 0), (-1, 0), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F0FFF0')),
+        ('TEXTCOLOR', (0, 1), (-1, -1), secondary_color),
+        ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+    ]))
+
+    report_elements.append(overall_result_table)
+    report_elements.append(Spacer(1, 0.2 * inch))
+
+    # Add the generated report time and date
+    report_date = datetime.now().strftime('%d-%m-%Y(%A) %I:%M:%S%p')
+    report_elements.append(Paragraph(f"Report Generated On: {report_date}", ParagraphStyle(name='ReportDate', alignment=TA_CENTER, fontSize=8, textColor=tertiary_color)))
+
+    # Add developer information
+    report_elements.append(Spacer(1, 0.2 * inch))
+    report_elements.append(Paragraph('SOIL HEALTH DIAGNOSTIC SYSTEM (v0.2.404)',
+                                     ParagraphStyle(name='BottomTitle', fontName='Helvetica', fontSize=6,
+                                                    textColor=secondary_color, alignment=TA_CENTER, fontWeight='bold')))
+
+    credentials_text = "Designed & Developed by: LALDINPUIA, Research Scholar"
+    report_elements.append(Paragraph(credentials_text,
+                                     ParagraphStyle(name='CredentialsText', fontName='Helvetica', fontSize=6,
+                                                    textColor=secondary_color, alignment=TA_CENTER)))
+
+    email_link_style = ParagraphStyle(name='EmailLink', fontName='Helvetica', fontSize=8,
+                                      textColor=colors.HexColor('#2E8B57'), alignment=TA_CENTER)
+    report_elements.append(Paragraph("Email: mzu22000486@mzu.edu.in", email_link_style))
+
+    department_text = "Department of Mathematics and Computer Science, Mizoram University"
+    report_elements.append(Paragraph(department_text,
+                                     ParagraphStyle(name='DepartmentText', fontName='Helvetica', fontSize=6,
+                                                    textColor=secondary_color, alignment=TA_CENTER, fontWeight='bold')))
+
+    # Build the report
     report.build(report_elements)
+
 
 def export_to_excel(test_id):
     file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")], initialfile=f"{test_id}_test.xlsx")

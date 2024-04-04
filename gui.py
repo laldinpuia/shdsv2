@@ -8,7 +8,7 @@ import numpy as np
 import re
 from indicators import soil_indicators
 from fahp import evaluate_soil_health
-from assessment import assess_soil_health, generate_crop_recommendations
+from assessment import assess_soil_health, generate_rating, generate_crop_recommendations
 from PIL import Image as PILImage, ImageTk
 from tkcalendar import Calendar
 from database import view_database, save_results
@@ -471,7 +471,17 @@ def create_gui():
                 float(moisture_entry.get()) if moisture_entry.get() else None,
                 float(humidity_entry.get()) if humidity_entry.get() else None
             ]),
-            'recommendations': generate_crop_recommendations(assess_soil_health([
+            'rating': generate_rating(assess_soil_health([
+                float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+                float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+                float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+                float(potassium_entry.get()) if potassium_entry.get() else None,
+                float(electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+                float(temperature_entry.get()) if temperature_entry.get() else None,
+                float(moisture_entry.get()) if moisture_entry.get() else None,
+                float(humidity_entry.get()) if humidity_entry.get() else None
+            ])),
+            'crop_recommendations': generate_crop_recommendations(assess_soil_health([
                 float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
                 float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
                 float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
@@ -631,6 +641,25 @@ def create_gui():
         moisture_entry.config(state=tk.NORMAL)
         humidity_entry.config(state=tk.NORMAL)
 
+        # Restore the labels' foreground color
+        test_id_label.config(foreground="black")
+        sample_date_label.config(foreground="black")
+        gps_label.config(foreground="black")
+        name_label.config(foreground="black")
+        area_label.config(foreground="black")
+        gender_label.config(foreground="black")
+        age_label.config(foreground="black")
+        address_label.config(foreground="black")
+        mobile_label.config(foreground="black")
+        soil_ph_label.config(foreground="black")
+        nitrogen_label.config(foreground="black")
+        phosphorus_label.config(foreground="black")
+        potassium_label.config(foreground="black")
+        electrical_conductivity_label.config(foreground="black")
+        temperature_label.config(foreground="black")
+        moisture_label.config(foreground="black")
+        humidity_label.config(foreground="black")
+
     def disable_input_fields():
         test_id_entry.config(state=tk.DISABLED)
         sample_date_entry.config(state=tk.DISABLED)
@@ -651,6 +680,25 @@ def create_gui():
         temperature_entry.config(state=tk.DISABLED)
         moisture_entry.config(state=tk.DISABLED)
         humidity_entry.config(state=tk.DISABLED)
+
+        # Grey out the labels
+        test_id_label.config(foreground="grey")
+        sample_date_label.config(foreground="grey")
+        gps_label.config(foreground="grey")
+        name_label.config(foreground="grey")
+        area_label.config(foreground="grey")
+        gender_label.config(foreground="grey")
+        age_label.config(foreground="grey")
+        address_label.config(foreground="grey")
+        mobile_label.config(foreground="grey")
+        soil_ph_label.config(foreground="grey")
+        nitrogen_label.config(foreground="grey")
+        phosphorus_label.config(foreground="grey")
+        potassium_label.config(foreground="grey")
+        electrical_conductivity_label.config(foreground="grey")
+        temperature_label.config(foreground="grey")
+        moisture_label.config(foreground="grey")
+        humidity_label.config(foreground="grey")
 
     def disable_all_elements():
         disable_input_fields()
@@ -936,7 +984,7 @@ def create_gui():
         y = (screen_height // 2) - (window_height // 2)
         pdf_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-    # Claude 3 Opus Print PDF
+    '''# Claude 3 Opus Print PDF
     def print_pdf(file_path):
         try:
             # Create a DC (Device Context) object for the default printer
@@ -980,7 +1028,7 @@ def create_gui():
 
 
 
-    '''# Print PDF using Github Codepilot
+    # Print PDF using Github Codepilot
 
     def print_pdf(file_path):
         try:
@@ -1020,9 +1068,9 @@ def create_gui():
             # Close the printer
             win32print.ClosePrinter(pHandle)
         except Exception as e:
-            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")'''
+            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")
 
-    '''# Print PDF using Ghostscript
+    # Print PDF using Ghostscript
     def print_pdf(file_path):
         try:
             # Get the default printer
@@ -1048,7 +1096,7 @@ def create_gui():
         except Exception as e:
             messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")'''
 
-    '''# Print PDF using win32print
+    # Print PDF using win32print
     def print_pdf(file_path):
         # Print the PDF file
         try:
@@ -1087,25 +1135,36 @@ def create_gui():
             # Close the printer
             win32print.ClosePrinter(pHandle)
         except Exception as e:
-            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")'''
+            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")
 
     return window
 def on_sample_date_click(event, info_frame, sample_date_entry):
+    def on_date_click(event):
+        selected_date = calendar.selection_get()
+        calendar.selection_set(selected_date)
+
     def on_select(event=None):
         selected_date = calendar.selection_get()
         sample_date_entry.delete(0, tk.END)
         sample_date_entry.insert(0, selected_date.strftime("%d-%m-%Y"))
+        sample_date_entry.config(state=tk.NORMAL)
+        sample_date_entry.unbind("<Key>")
+        sample_date_entry.bind("<Key>", lambda e: "break")
         calendar_frame.destroy()
+        info_frame.focus_set()
 
     calendar_frame = ttk.Frame(info_frame)
     calendar_frame.grid(row=2, column=1, padx=5, pady=5, sticky='ew')
     calendar = Calendar(calendar_frame, selectmode='day', date_pattern='dd-mm-y')
     calendar.pack(fill='both', expand=True)
 
-    calendar.bind("<<CalendarSelected>>", lambda event: on_select())
+    calendar.bind('<<CalendarSelected>>', on_date_click)
+    calendar.bind('<Double-1>', on_select)
 
     select_button = ttk.Button(calendar_frame, text="Select", command=on_select)
     select_button.pack(pady=5)
+
+    calendar.focus_set()
 def on_test_id_tab(event, info_frame, sample_date_entry):
     on_sample_date_click(event, info_frame, sample_date_entry)
 
