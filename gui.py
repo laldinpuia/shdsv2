@@ -34,6 +34,7 @@ def create_gui():
 
     window = ThemedTk(theme="ubuntu")
     window.title("Soil Health Diagnostic System (v0.2.404)")
+    window.resizable(False, False)  # Make the window non-resizable
 
     icon = PILImage.open("main.ico")
     window.iconphoto(True, ImageTk.PhotoImage(icon))
@@ -68,6 +69,7 @@ def create_gui():
     x = (screen_width // 2) - (window_width // 2)
     y = (screen_height // 2) - (window_height // 2)
     window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
 
     # Test ID input field
     test_id_label = ttk.Label(info_frame, text='Test ID')
@@ -1109,3 +1111,4 @@ def on_test_id_tab(event, info_frame, sample_date_entry):
 def on_area_tab(event, gender_dropdown):
     gender_dropdown.focus_set()
     gender_dropdown.event_generate('<Down>')
+
