@@ -28,7 +28,8 @@ def create_database():
                   moisture REAL,
                   humidity REAL,
                   soil_health_score REAL(3,2),
-                  recommendations TEXT)''')
+                  crop_recommendations TEXT,
+                  fertilizer_recommendation TEXT)''')
     conn.commit()
     conn.close()
 
@@ -36,19 +37,19 @@ def save_results(data):
     conn = sqlite3.connect('soil_health.db')
     c = conn.cursor()
 
-
     c.execute('''INSERT INTO soil_tests
                  (test_id, collection_date, latitude, longitude, name, area, gender, age, address, mobile_no,
                   soil_ph, nitrogen, phosphorus, potassium, electrical_conductivity, temperature, moisture, humidity,
-                  soil_health_score, recommendations)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                  soil_health_score, crop_recommendations, fertilizer_recommendation)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
               (
                   data['test_id'], data['collection_date'], data['latitude'], data['longitude'], data['name'],
                   data['area'],
                   data['gender'], data['age'], data['address'], data['mobile_no'], data['soil_ph'], data['nitrogen'],
                   data['phosphorus'], data['potassium'], data['electrical_conductivity'], data['temperature'],
                   data['moisture'],
-                  data['humidity'], round(data['soil_health_score'], 2), data['recommendations']))
+                  data['humidity'], round(data['soil_health_score'], 2), data['crop_recommendations'],
+                  data['fertilizer_recommendation']))
     conn.commit()
     conn.close()
 
@@ -127,20 +128,24 @@ def view_database(window):
     apply_button.image = apply_photo  # Keep a reference to the image to prevent garbage collection
     apply_button.pack(side=tk.LEFT, padx=5)
 
-    # Create a frame to hold the Treeview and scrollbar
+    # Create a frame to hold the Treeview and scrollbars
     tree_frame = ttk.Frame(db_window)
     tree_frame.pack(fill=tk.BOTH, expand=True)
 
     # Create a vertical scrollbar
-    scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL)
-    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    vertical_scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL)
+    vertical_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    # Create a horizontal scrollbar
+    horizontal_scrollbar = ttk.Scrollbar(tree_frame, orient=tk.HORIZONTAL)
+    horizontal_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
     # Create a Treeview widget to display the records
-    tree = ttk.Treeview(tree_frame, show="headings", yscrollcommand=scrollbar.set, height=15)
+    tree = ttk.Treeview(tree_frame, show="headings", yscrollcommand=vertical_scrollbar.set, xscrollcommand=horizontal_scrollbar.set, height=15)
     tree["columns"] = (
         "id", "test_id", "collection_date", "latitude", "longitude", "name", "area", "gender", "age", "address",
         "mobile_no", "soil_ph", "nitrogen", "phosphorus", "potassium", "electrical_conductivity", "temperature",
-        "moisture", "humidity", "soil_health_score", "recommendations")
+        "moisture", "humidity", "soil_health_score", "crop_recommendations", "fertilizer_recommendation")
     tree.heading("id", text="ID", command=lambda: sort_column("id"))
     tree.heading("test_id", text="Test ID", command=lambda: sort_column("test_id"))
     tree.heading("collection_date", text="Collection Date", command=lambda: sort_column("collection_date"))
@@ -161,7 +166,8 @@ def view_database(window):
     tree.heading("moisture", text="Moisture", command=lambda: sort_column("moisture"))
     tree.heading("humidity", text="Humidity", command=lambda: sort_column("humidity"))
     tree.heading("soil_health_score", text="Soil Health Score", command=lambda: sort_column("soil_health_score"))
-    tree.heading("recommendations", text="Recommendations", command=lambda: sort_column("recommendations"))
+    tree.heading("crop_recommendations", text="Crop Recommendations", command=lambda: sort_column("crop_recommendations"))
+    tree.heading("fertilizer_recommendation", text="Fertilizer Recommendations", command=lambda: sort_column("fertilizer_recommendation"))
 
     # Set column widths
     tree.column("id", width=50)
@@ -184,10 +190,14 @@ def view_database(window):
     tree.column("moisture", width=80)
     tree.column("humidity", width=80)
     tree.column("soil_health_score", width=120)
-    tree.column("recommendations", width=200)
+    tree.column("crop_recommendations", width=200)
+    tree.column("fertilizer_recommendation", width=200)
 
-    # Configure the scrollbar to work with the Treeview
-    scrollbar.config(command=tree.yview)
+    # Configure the vertical scrollbar to work with the Treeview
+    vertical_scrollbar.config(command=tree.yview)
+
+    # Configure the horizontal scrollbar to work with the Treeview
+    horizontal_scrollbar.config(command=tree.xview)
 
     # Load the sorting order icons
     ascending_icon = PILImage.open("ascending.png")
@@ -288,7 +298,7 @@ def view_database(window):
                           "Age",
                           "Address", "Mobile No.", "Soil pH", "Nitrogen", "Phosphorus", "Potassium",
                           "Electrical Conductivity", "Temperature", "Moisture", "Humidity", "Soil Health Score",
-                          "Recommendations"]
+                          "Crop Recommendations", "Fertilizer Recommendation"]
                 sheet.append(header)
 
                 # Format the values based on their respective data types

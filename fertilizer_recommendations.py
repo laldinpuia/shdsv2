@@ -10,13 +10,13 @@ def load_fertilizer_recommendations():
                 recommendation = {
                     'soil_ph_min': float(row[0]),
                     'soil_ph_max': float(row[1]),
-                    'nitrogen_min': float(row[2]) if row[2] != '-inf' else float('-inf'),
+                    'nitrogen_min': float(row[2]),
                     'nitrogen_max': float(row[3]) if row[3] != 'inf' else float('inf'),
-                    'phosphorus_min': float(row[4]) if row[4] != '-inf' else float('-inf'),
+                    'phosphorus_min': float(row[4]),
                     'phosphorus_max': float(row[5]) if row[5] != 'inf' else float('inf'),
-                    'potassium_min': float(row[6]) if row[6] != '-inf' else float('-inf'),
+                    'potassium_min': float(row[6]),
                     'potassium_max': float(row[7]) if row[7] != 'inf' else float('inf'),
-                    'electrical_conductivity_min': float(row[8]) if row[8] != '-inf' else float('-inf'),
+                    'electrical_conductivity_min': float(row[8]),
                     'electrical_conductivity_max': float(row[9]) if row[9] != 'inf' else float('inf'),
                     'temperature_min': float(row[10]),
                     'temperature_max': float(row[11]) if row[11] != 'inf' else float('inf'),
@@ -45,4 +45,4 @@ def get_fertilizer_recommendation(soil_data):
             recommendation['moisture_min'] <= soil_data['moisture'] <= recommendation['moisture_max'] and
             recommendation['humidity_min'] <= soil_data['humidity'] <= recommendation['humidity_max']):
             return recommendation['recommendation']
-    return "No specific fertilizer recommendation available for the given soil data."
+    return "No specific fertilizer recommendation available for the given soil data. Please consult with local agriculture experts for personalized recommendations."

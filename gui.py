@@ -493,7 +493,7 @@ def create_gui():
                 float(moisture_entry.get()) if moisture_entry.get() else None,
                 float(humidity_entry.get()) if humidity_entry.get() else None
             ])['rating'],
-            'crop_recommendations': assess_soil_health([
+                'crop_recommendations': assess_soil_health([
                 float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
                 float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
                 float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
@@ -575,7 +575,7 @@ def create_gui():
                 float(moisture_entry.get()) if moisture_entry.get() else None,
                 float(humidity_entry.get()) if humidity_entry.get() else None
             ])['soil_health_score'],
-            'recommendations': assess_soil_health([
+            'crop_recommendations': assess_soil_health([
                 float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
                 float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
                 float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
@@ -596,6 +596,7 @@ def create_gui():
                 float(humidity_entry.get()) if humidity_entry.get() else None
             ])['fertilizer_recommendation']
         }
+
 
         # Save the data to the database
         save_results(data)
@@ -968,7 +969,7 @@ def create_gui():
         pdf_window.title(f"Soil Health Report of: {os.path.basename(file_path)}")
 
         # Create a canvas to display the PDF pages
-        canvas = tk.Canvas(pdf_window, width=768, height=1024)
+        canvas = tk.Canvas(pdf_window, width=600, height=800)
         canvas.pack(fill=tk.BOTH, expand=True)
 
         # Create a scrollbar for the canvas
@@ -986,7 +987,7 @@ def create_gui():
                 page_images = convert_from_path(file_path, first_page=page_num + 1, last_page=page_num + 1)
 
                 for img in page_images:
-                    img = img.resize((768, 1024), Image.LANCZOS)
+                    img = img.resize((600, 800), Image.LANCZOS)
                     photo = ImageTk.PhotoImage(img)
 
                     # Display the image on the canvas
@@ -1075,13 +1076,14 @@ def on_sample_date_click(event, info_frame, sample_date_entry):
         selected_date = calendar.selection_get()
         calendar.selection_set(selected_date)
 
-    def on_select(event=None):
+    def on_select(event):
         selected_date = calendar.selection_get()
+        sample_date_entry.config(state=tk.NORMAL)  # Enable the entry field
         sample_date_entry.delete(0, tk.END)
         sample_date_entry.insert(0, selected_date.strftime("%d-%m-%Y"))
-        sample_date_entry.config(state=tk.NORMAL)
-        sample_date_entry.unbind("<Key>")
-        sample_date_entry.bind("<Key>", lambda e: "break")
+        sample_date_entry.config(state="readonly")  # Set the entry field to readonly
+        sample_date_entry.unbind("<Key>")  # Remove the key binding
+        sample_date_entry.bind("<Key>", lambda e: "break")  # Prevent any keystrokes
         calendar_frame.destroy()
         info_frame.focus_set()
 
@@ -1090,11 +1092,15 @@ def on_sample_date_click(event, info_frame, sample_date_entry):
     calendar = Calendar(calendar_frame, selectmode='day', date_pattern='dd-mm-y')
     calendar.pack(fill='both', expand=True)
 
-    calendar.bind('<<CalendarSelected>>', on_date_click)
-    calendar.bind('<Double-1>', on_select)
+    calendar.bind('<<CalendarSelected>>', on_date_click)  # Bind single-click event
+    calendar.bind('<Double-1>', on_select)  # Bind double-click event to on_select()
 
-    select_button = ttk.Button(calendar_frame, text="Select", command=on_select)
+    select_button = ttk.Button(calendar_frame, text="Select", command=lambda: on_select(None))
     select_button.pack(pady=5)
+
+    sample_date_entry.config(state="readonly")  # Set the entry field to readonly
+    sample_date_entry.unbind("<Key>")  # Remove any existing key bindings
+    sample_date_entry.bind("<Key>", lambda e: "break")  # Prevent any keystrokes
 
     calendar.focus_set()
 def on_test_id_tab(event, info_frame, sample_date_entry):
