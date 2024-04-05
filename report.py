@@ -63,7 +63,7 @@ def generate_pdf_report(data, file_path, indicator_values):
         ['Mobile No.', data['mobile_no']],
         ['Area (ha)', data['area']]
     ]
-    farmer_info_table = Table(farmer_info_data, colWidths=[1.5 * inch, 2.0 * inch])
+    farmer_info_table = Table(farmer_info_data, colWidths=[1.0 * inch, 2.5 * inch])
     farmer_info_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4682B4')),  # Steelblue
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#FFFFFF')),  # White
@@ -215,14 +215,16 @@ def generate_pdf_report(data, file_path, indicator_values):
     report_elements.append(Spacer(1, 0.2 * inch))
 
     # Add 'Overall Result' table
-    value_ranges_text = "Very Poor, Poor,\nBelow Average, Average,\nAbove Average, Good,\nExcellent"
+    value_ranges_text = Paragraph("Very Poor, Poor, Below Average, Average, Above Average, Good, Excellent",
+                                  ParagraphStyle(name='ValueRangesText', wordWrap='LTR', fontSize=8))
     overall_result_data = [
         ['Result', 'Value', 'Range'],
         ['Soil Health Score', f"{data['soil_health_score']:.2f}", '0 - 1'],
         ['Rating', data['rating'], value_ranges_text],
-        ['Crop Recommendations', data['crop_recommendations'], '']
+        ['Crop Recommendations', Paragraph(data['crop_recommendations'],
+                                           ParagraphStyle(name='CropRecommendations', wordWrap='LTR', fontSize=8)), '']
     ]
-    overall_result_table = Table(overall_result_data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch])
+    overall_result_table = Table(overall_result_data, colWidths=[2.0 * inch, 1.0 * inch, 3.0 * inch])
     overall_result_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), primary_color),
         ('TEXTCOLOR', (0, 0), (-1, 0), accent_color),
@@ -237,6 +239,7 @@ def generate_pdf_report(data, file_path, indicator_values):
         ('FONTSIZE', (0, 1), (-1, -1), 8),
         ('TOPPADDING', (0, 1), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ('SPAN', (1, -1), (2, -1))  # Merge the 'Value' and 'Range' cells for the 'Crop Recommendations' row
     ]))
 
     overall_result_title = Paragraph("Overall Result",
@@ -244,9 +247,9 @@ def generate_pdf_report(data, file_path, indicator_values):
                                                     fontWeight='bold'))
     overall_result_table_with_title = Table([[overall_result_title],
                                              [overall_result_table]],
-                                            colWidths=[4.5 * inch])
+                                            colWidths=[6.0 * inch], hAlign='CENTER')
     overall_result_table_with_title.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align tops of cells
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # Vertically center the content
         ('LEFTPADDING', (0, 0), (0, -1), 0),  # Left padding for the first column
         ('RIGHTPADDING', (-1, 0), (-1, -1), 0),  # Right padding for the last column
         ('TOPPADDING', (0, 0), (-1, -1), 0),

@@ -364,10 +364,14 @@ def create_gui():
             'recommendations': recommendations
         }
 
-        # Update the UI with the results
-        window.after(0, update_results, loading_window, progress_bar, indicator_values, soil_health_score)
+        result_frame = visualize_results(indicator_values, soil_health_score, visualization_frame)
 
-    def update_results(loading_window, progress_bar, indicator_values, soil_health_score):
+        # Update the UI with the results
+        window.after(0, update_results, loading_window, progress_bar, indicator_values, soil_health_score,
+                     recommendations, result_frame)
+
+    def update_results(loading_window, progress_bar, indicator_values, soil_health_score, recommendations,
+                       result_frame):
         # Stop the progress bar animation
         progress_bar.stop()
 
@@ -381,7 +385,7 @@ def create_gui():
         # Disable and grey out the input fields in the Farmer Information and Soil Health Indicators frame
         disable_input_fields()
 
-        visualize_results(indicator_values, soil_health_score, visualization_frame)
+        result_frame = visualize_results(indicator_values, soil_health_score, visualization_frame)
 
         save_export_button.config(state=tk.NORMAL)
         report_button.config(state=tk.DISABLED)
@@ -401,6 +405,13 @@ def create_gui():
         x = (screen_width // 2) - (window_width // 2)
         y = (screen_height // 2) - (window_height // 2)
         window.geometry(f"+{x}+{y}")
+
+        # Update the recommendations label with the generated recommendations
+        recommendations_text = f"\nCrop Recommendations:\n{recommendations}"
+        recommendations_label = ttk.Label(result_frame, text=recommendations_text, font=("Helvetica", 10, "bold"),
+                                          justify=tk.CENTER, wraplength=400)
+        recommendations_label.pack(side=tk.BOTTOM, padx=10)
+        recommendations_label.config(text=f"\nCrop Recommendations:\n{recommendations}")
 
     # Function to clear all the input fields
     def clear_button_clicked():
@@ -508,7 +519,12 @@ def create_gui():
             generate_pdf_report(data, file_path, indicator_values)
             tk.messagebox.showinfo("Report Confirmation", "Soil Health Report Generated Successfully")
 
-            # Disable the 'Generate' button immediately
+            # Disable the 'Clear', 'Save & Export', and 'Assess Soil Health' buttons
+            clear_button.config(state=tk.DISABLED)
+            save_export_button.config(state=tk.DISABLED)
+            assess_button.config(state=tk.DISABLED)
+
+            # Disable the 'Generate Report' button immediately
             report_button.config(state=tk.DISABLED)
 
             # Open the generated PDF report in a new window
@@ -587,6 +603,11 @@ def create_gui():
             sheet.append(formatted_values)
             workbook.save(file_path)
             messagebox.showinfo("Save Confirmation", "Results exported to Excel successfully.")
+
+            # Disable the 'Clear', 'Assess Soil Health', and 'Generate Report' buttons
+            clear_button.config(state=tk.DISABLED)
+            assess_button.config(state=tk.DISABLED)
+            report_button.config(state=tk.NORMAL)
 
             # Enable the 'Generate Report' button
             report_button.config(state=tk.NORMAL)
@@ -878,23 +899,22 @@ def create_gui():
         result_frame = ttk.Frame(visualization_content_frame)
         result_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        center_frame = ttk.Frame(result_frame)
-        center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-
         result_label = ttk.Label(result_frame, text=f"Soil Health Score: {soil_health_score:.2f}",
                                  font=("Helvetica", 10, "bold"))
         result_label.pack(side=tk.TOP, padx=10)
+
+        rating = generate_rating(soil_health_score)
+
+        rating_label = ttk.Label(result_frame, text=f"\nRating: {rating}", font=("Helvetica", 10, "bold"))
+        rating_label.pack(side=tk.TOP, padx=10)
+
+        return result_frame
 
         # Calculate the rating
         rating = generate_rating(soil_health_score)
 
         rating_label = ttk.Label(result_frame, text=f"\nRating: {rating}", font=("Helvetica", 10, "bold"))
         rating_label.pack(side=tk.TOP, padx=10)
-
-        recommendations_text = f"\nCrop Recommendations:\n{generate_crop_recommendations(soil_health_score)}"
-        recommendations_label = ttk.Label(result_frame, text=recommendations_text, font=("Helvetica", 10, "bold"),
-                                          justify=tk.CENTER, wraplength=400)
-        recommendations_label.pack(side=tk.BOTTOM, padx=10)
 
         try:
             data = {
