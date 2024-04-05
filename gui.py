@@ -405,13 +405,14 @@ def create_gui():
         x = (screen_width // 2) - (window_width // 2)
         y = (screen_height // 2) - (window_height // 2)
         window.geometry(f"+{x}+{y}")
-
-        # Update the recommendations label with the generated recommendations
+        '''
+        # Update the recommendations label with the generated recommendations in the main GUI window
         recommendations_text = f"\nCrop Recommendations:\n{recommendations}"
         recommendations_label = ttk.Label(result_frame, text=recommendations_text, font=("Helvetica", 10, "bold"),
                                           justify=tk.CENTER, wraplength=400)
         recommendations_label.pack(side=tk.BOTTOM, padx=10)
         recommendations_label.config(text=f"\nCrop Recommendations:\n{recommendations}")
+        '''
 
     # Function to clear all the input fields
     def clear_button_clicked():
@@ -481,8 +482,8 @@ def create_gui():
                 float(temperature_entry.get()) if temperature_entry.get() else None,
                 float(moisture_entry.get()) if moisture_entry.get() else None,
                 float(humidity_entry.get()) if humidity_entry.get() else None
-            ]),
-            'rating': generate_rating(assess_soil_health([
+            ])['soil_health_score'],
+            'rating': assess_soil_health([
                 float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
                 float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
                 float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
@@ -491,8 +492,8 @@ def create_gui():
                 float(temperature_entry.get()) if temperature_entry.get() else None,
                 float(moisture_entry.get()) if moisture_entry.get() else None,
                 float(humidity_entry.get()) if humidity_entry.get() else None
-            ])),
-            'crop_recommendations': generate_crop_recommendations(assess_soil_health([
+            ])['rating'],
+            'crop_recommendations': assess_soil_health([
                 float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
                 float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
                 float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
@@ -501,7 +502,17 @@ def create_gui():
                 float(temperature_entry.get()) if temperature_entry.get() else None,
                 float(moisture_entry.get()) if moisture_entry.get() else None,
                 float(humidity_entry.get()) if humidity_entry.get() else None
-            ]))
+            ])['crop_recommendations'],
+            'fertilizer_recommendation': assess_soil_health([
+                float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+                float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+                float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+                float(potassium_entry.get()) if potassium_entry.get() else None,
+                float(electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+                float(temperature_entry.get()) if temperature_entry.get() else None,
+                float(moisture_entry.get()) if moisture_entry.get() else None,
+                float(humidity_entry.get()) if humidity_entry.get() else None
+            ])['fertilizer_recommendation']
         }
         file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF Files", "*.pdf")],
                                                  initialfile=f"{data['test_id']}_report.pdf")
@@ -563,8 +574,8 @@ def create_gui():
                 float(temperature_entry.get()) if temperature_entry.get() else None,
                 float(moisture_entry.get()) if moisture_entry.get() else None,
                 float(humidity_entry.get()) if humidity_entry.get() else None
-            ]),
-            'recommendations': generate_crop_recommendations(assess_soil_health([
+            ])['soil_health_score'],
+            'recommendations': assess_soil_health([
                 float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
                 float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
                 float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
@@ -573,7 +584,17 @@ def create_gui():
                 float(temperature_entry.get()) if temperature_entry.get() else None,
                 float(moisture_entry.get()) if moisture_entry.get() else None,
                 float(humidity_entry.get()) if humidity_entry.get() else None
-            ]))
+            ])['crop_recommendations'],
+            'fertilizer_recommendation': assess_soil_health([
+                float(soil_ph_entry.get()) if soil_ph_entry.get() else None,
+                float(nitrogen_entry.get()) if nitrogen_entry.get() else None,
+                float(phosphorus_entry.get()) if phosphorus_entry.get() else None,
+                float(potassium_entry.get()) if potassium_entry.get() else None,
+                float(electrical_conductivity_entry.get()) if electrical_conductivity_entry.get() else None,
+                float(temperature_entry.get()) if temperature_entry.get() else None,
+                float(moisture_entry.get()) if moisture_entry.get() else None,
+                float(humidity_entry.get()) if humidity_entry.get() else None
+            ])['fertilizer_recommendation']
         }
 
         # Save the data to the database
@@ -587,7 +608,7 @@ def create_gui():
             header = ["Test ID", "Collection Date", "Latitude", "Longitude", "Name", "Area (ha)", "Gender", "Age",
                       "Address", "Mobile No.", "Soil pH", "Nitrogen", "Phosphorus", "Potassium",
                       "Electrical Conductivity", "Temperature", "Moisture", "Humidity", "Soil Health Score",
-                      "Recommendations"]
+                      "Recommendations", "Fertilizer Recommendation"]
             sheet.append(header)
 
             # Format the values based on their respective data types
@@ -607,9 +628,6 @@ def create_gui():
             # Disable the 'Clear', 'Assess Soil Health', and 'Generate Report' buttons
             clear_button.config(state=tk.DISABLED)
             assess_button.config(state=tk.DISABLED)
-            report_button.config(state=tk.NORMAL)
-
-            # Enable the 'Generate Report' button
             report_button.config(state=tk.NORMAL)
 
             # Disable the 'Save & Export' button immediately
@@ -898,7 +916,7 @@ def create_gui():
 
         result_frame = ttk.Frame(visualization_content_frame)
         result_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
+        '''
         result_label = ttk.Label(result_frame, text=f"Soil Health Score: {soil_health_score:.2f}",
                                  font=("Helvetica", 10, "bold"))
         result_label.pack(side=tk.TOP, padx=10)
@@ -907,7 +925,7 @@ def create_gui():
 
         rating_label = ttk.Label(result_frame, text=f"\nRating: {rating}", font=("Helvetica", 10, "bold"))
         rating_label.pack(side=tk.TOP, padx=10)
-
+        '''
         return result_frame
 
         # Calculate the rating
@@ -1009,118 +1027,6 @@ def create_gui():
         x = (screen_width // 2) - (window_width // 2)
         y = (screen_height // 2) - (window_height // 2)
         pdf_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
-    '''# Claude 3 Opus Print PDF
-    def print_pdf(file_path):
-        try:
-            # Create a DC (Device Context) object for the default printer
-            printer_name = win32print.GetDefaultPrinter()
-            hDC = win32ui.CreateDC()
-            hDC.CreatePrinterDC(printer_name)
-
-            # Create a PrintDialog object
-            pd = win32ui.CreatePrintDialog(hDC)
-
-            # Initialize the PrintDialog object
-            pd.DoModal()
-
-            # Get the selected print settings
-            devmode = pd.GetDevMode()
-
-            # Access defaults
-            PRINTER_DEFAULTS = {"DesiredAccess": win32print.PRINTER_ALL_ACCESS}
-
-            # Open printer to get the handle
-            pHandle = win32print.OpenPrinter(printer_name, PRINTER_DEFAULTS)
-
-            # Get the current properties
-            properties = win32print.GetPrinter(pHandle, 2)
-
-            # Set the devmode
-            properties['pDevMode'] = devmode
-
-            # Save the printer settings
-            win32print.SetPrinter(pHandle, 2, properties, 0)
-
-            # Print the PDF file using the selected printer without opening the default PDF reader
-            win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
-
-            messagebox.showinfo("Print", f"'{os.path.basename(file_path)}' has been sent to the printer.")
-
-            # Close the printer
-            win32print.ClosePrinter(pHandle)
-        except Exception as e:
-            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")
-
-
-
-    # Print PDF using Github Codepilot
-
-    def print_pdf(file_path):
-        try:
-            # Get the default printer
-            default_printer = win32print.GetDefaultPrinter()
-
-            # Access defaults
-            PRINTER_DEFAULTS = {"DesiredAccess": win32print.PRINTER_ALL_ACCESS}
-
-            # Open printer to get the handle
-            pHandle = win32print.OpenPrinter(default_printer, PRINTER_DEFAULTS)
-
-            # Get the current properties
-            properties = win32print.GetPrinter(pHandle, 2)
-
-            # Get the devmode
-            pDevModeObj = properties['pDevMode']
-
-            # Open the printer properties and pass the devmode
-            result = win32print.DocumentProperties(0, pHandle, default_printer, pDevModeObj, pDevModeObj,
-                                                   win32con.DM_PROMPT)
-
-            if result == win32con.IDOK:  # IDOK
-                # Reassign the devmode
-                properties['pDevMode'] = pDevModeObj
-
-                # Save the printer settings
-                win32print.SetPrinter(pHandle, 2, properties, 0)
-
-                # Print the PDF file using the default printer without opening the default PDF reader
-                win32api.ShellExecute(0, "printto", file_path, f'"{default_printer}"', ".", 0)
-
-                messagebox.showinfo("Print", f"'{os.path.basename(file_path)}' has been sent to the printer.")
-            else:
-                messagebox.showinfo("Print", "Printing canceled.")
-
-            # Close the printer
-            win32print.ClosePrinter(pHandle)
-        except Exception as e:
-            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")
-
-    # Print PDF using Ghostscript
-    def print_pdf(file_path):
-        try:
-            # Get the default printer
-            default_printer = win32print.GetDefaultPrinter()
-
-            # Construct the Ghostscript command
-            # Note: Adjust the path to gswin64c.exe as needed for your Ghostscript installation
-            gs_command = [
-                "gswin64c.exe",
-                "-dNOPAUSE",
-                "-dBATCH",
-                "-dQUIET",
-                "-dPrinted",
-                f'-sDEVICE=mswinpr2',
-                f'-sOutputFile=%printer%{default_printer}',
-                file_path
-            ]
-
-            # Execute the command
-            subprocess.run(gs_command, check=True)
-
-            messagebox.showinfo("Print", f"'{os.path.basename(file_path)}' has been sent to the printer.")
-        except Exception as e:
-            messagebox.showerror("Print Error", f"An error occurred while printing the file:\n{str(e)}")'''
 
     # Print PDF using win32print
     def print_pdf(file_path):

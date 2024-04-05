@@ -222,9 +222,12 @@ def generate_pdf_report(data, file_path, indicator_values):
         ['Soil Health Score', f"{data['soil_health_score']:.2f}", '0 - 1'],
         ['Rating', data['rating'], value_ranges_text],
         ['Crop Recommendations', Paragraph(data['crop_recommendations'],
-                                           ParagraphStyle(name='CropRecommendations', wordWrap='LTR', fontSize=8)), '']
+                                           ParagraphStyle(name='CropRecommendations', wordWrap='LTR', fontSize=8)), ''],
+        ['Fertilizer Recommendations', Paragraph(data['fertilizer_recommendation'],
+                                                 ParagraphStyle(name='FertilizerRecommendations', wordWrap='LTR',
+                                                                fontSize=8)), '']
     ]
-    overall_result_table = Table(overall_result_data, colWidths=[2.0 * inch, 1.0 * inch, 3.0 * inch])
+    overall_result_table = Table(overall_result_data, colWidths=[2.0 * inch, 2.0 * inch, 2.0 * inch])
     overall_result_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), primary_color),
         ('TEXTCOLOR', (0, 0), (-1, 0), accent_color),
@@ -239,7 +242,8 @@ def generate_pdf_report(data, file_path, indicator_values):
         ('FONTSIZE', (0, 1), (-1, -1), 8),
         ('TOPPADDING', (0, 1), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
-        ('SPAN', (1, -1), (2, -1))  # Merge the 'Value' and 'Range' cells for the 'Crop Recommendations' row
+        ('SPAN', (1, 3), (-1, 3)),  # Merge the 'Value' and 'Range' cells for the 'Crop Recommendations' row
+        ('SPAN', (1, 4), (-1, 4))  # Merge the 'Value' and 'Range' cells for the 'Fertilizer Recommendations' row
     ]))
 
     overall_result_title = Paragraph("Overall Result",
