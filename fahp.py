@@ -41,7 +41,7 @@ def fuzzy_weights(geometric_means):
         fuzzy_weights.append(weight)
     return np.array(fuzzy_weights)
 
-def consistency_ratio(matrix):
+'''def consistency_ratio(matrix):
     n = matrix.shape[0]
     defuzzified_matrix = np.zeros((n, n))
     for i in range(n):
@@ -52,7 +52,7 @@ def consistency_ratio(matrix):
     consistency_index = (max_eigenvalue - n) / (n - 1)
     random_index = {1: 0, 2: 0, 3: 0.58, 4: 0.9, 5: 1.12, 6: 1.24, 7: 1.32, 8: 1.41, 9: 1.45, 10: 1.49}
     consistency_ratio = consistency_index / random_index[n]
-    return consistency_ratio
+    return consistency_ratio'''
 
 def fahp_weights():
     matrix = predefined_fuzzy_comparison_matrix()

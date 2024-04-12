@@ -19,18 +19,7 @@ def assess_soil_health(indicator_values):
     soil_health_score = evaluate_soil_health(normalized_values)
     rating = generate_rating(soil_health_score)
     crop_recommendations = generate_crop_recommendations(soil_health_score)
-    fertilizer_recommendation = generate_fertilizer_recommendation(
-        {
-            'soil_ph': indicator_values[0],
-            'nitrogen': indicator_values[1],
-            'phosphorus': indicator_values[2],
-            'potassium': indicator_values[3],
-            'electrical_conductivity': indicator_values[4],
-            'temperature': indicator_values[5],
-            'moisture': indicator_values[6],
-            'humidity': indicator_values[7]
-        }
-    )
+    fertilizer_recommendation = generate_fertilizer_recommendation(soil_health_score)
 
     return {
         'soil_health_score': soil_health_score,
@@ -79,5 +68,5 @@ def generate_crop_recommendations(soil_health_score):
             return recommendation
     return "No specific crop recommendations available for the given soil health score."
 
-def generate_fertilizer_recommendation(soil_data):
-    return get_fertilizer_recommendation(soil_data)
+def generate_fertilizer_recommendation(soil_health_score):
+    return get_fertilizer_recommendation(soil_health_score)

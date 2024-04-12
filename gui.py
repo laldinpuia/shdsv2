@@ -854,32 +854,41 @@ def create_gui():
     bottom_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="we")
     bottom_frame.columnconfigure(0, weight=1)
 
-    title_label = ttk.Label(bottom_frame, text="SOIL HEALTH DIAGNOSTIC SYSTEM (v0.2.404)", font=("Helvetica", 8, "bold"),
+    title_label = ttk.Label(bottom_frame, text="SOIL HEALTH DIAGNOSTIC SYSTEM (v0.2.404)",
+                            font=("Helvetica", 8, "bold"),
                             justify="center")
     title_label.grid(row=0, column=0, padx=5, pady=(0, 5))
-
-    mzu_logo = PILImage.open("mzu.png")
-    mzu_logo = mzu_logo.resize((80, 80), PILImage.LANCZOS)
-    mzu_photo = ImageTk.PhotoImage(mzu_logo)
-    mzu_label = ttk.Label(bottom_frame, image=mzu_photo)
-    mzu_label.image = mzu_photo
-    mzu_label.grid(row=3, column=0, padx=5, pady=(5, 0))
 
     credentials_frame = ttk.Frame(bottom_frame)
     credentials_frame.grid(row=1, column=0, padx=5, pady=(0, 5))
 
-    credentials_text = "Designed & Developed by:\nLALDINPUIA\nResearch Scholar"
-    credentials_label = ttk.Label(credentials_frame, text=credentials_text, font=("Helvetica", 8), justify="center")
-    credentials_label.pack()
+    main_logo = PILImage.open("main.png")
+    main_logo = main_logo.resize((50, 50), PILImage.LANCZOS)
+    main_photo = ImageTk.PhotoImage(main_logo)
+    main_label = ttk.Label(credentials_frame, image=main_photo)
+    main_label.image = main_photo
+    main_label.pack(side=tk.LEFT, padx=(0, 70))
 
-    email_link = tk.Label(credentials_frame, text="Email: mzu22000486@mzu.edu.in", font=("Helvetica", 8), fg="green",
+    credentials_text = "Designed & Developed by:\nLALDINPUIA\nResearch Scholar"
+    credentials_label = ttk.Label(credentials_frame, text=credentials_text, font=("Helvetica", 8), justify="center",
+                                  anchor="center")
+    credentials_label.pack(side=tk.LEFT, padx=(0, 0))
+
+    mzu_logo = PILImage.open("mzu.png")
+    mzu_logo = mzu_logo.resize((60, 60), PILImage.LANCZOS)
+    mzu_photo = ImageTk.PhotoImage(mzu_logo)
+    mzu_label = ttk.Label(credentials_frame, image=mzu_photo)
+    mzu_label.image = mzu_photo
+    mzu_label.pack(side=tk.RIGHT, padx=(70, 0))
+
+    email_link = tk.Label(bottom_frame, text="Email: mzu22000486@mzu.edu.in", font=("Helvetica", 8), fg="green",
                           cursor="hand2")
-    email_link.pack()
+    email_link.grid(row=2, column=0, padx=5, pady=(0, 5))
     email_link.bind("<Button-1>", open_email_link)
 
     department_text = "Department of Mathematics and Computer Science\nMizoram University"
     department_label = ttk.Label(bottom_frame, text=department_text, font=("Helvetica", 8, "bold"), justify="center")
-    department_label.grid(row=2, column=0, padx=5, pady=(5, 5))
+    department_label.grid(row=3, column=0, padx=5, pady=(5, 5))
 
     def visualize_results(indicator_values, soil_health_score, visualization_frame):
         for widget in visualization_frame.winfo_children():

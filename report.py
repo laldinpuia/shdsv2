@@ -1,10 +1,11 @@
 from reportlab.lib.utils import ImageReader
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, HRFlowable
 from reportlab.lib import colors
+from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.lib.enums import TA_CENTER, TA_LEFT  # Import TA_LEFT
+from reportlab.lib.units import inch, cm
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from indicators import soil_indicators
 from fahp import fahp_weights, evaluate_soil_health
 from assessment import assess_soil_health, generate_rating, generate_crop_recommendations
@@ -41,18 +42,29 @@ def generate_pdf_report(data, file_path, indicator_values):
     # Create the report elements
     report_elements = []
 
-    # Add the main title with image
+    # Add the main title with images
     main_image = Image('main.png', width=0.5 * inch, height=0.5 * inch)
+    university_image = Image('mzu.png', width=0.5 * inch, height=0.5 * inch)
     main_title = Paragraph('Soil Health Diagnostic System Report', styles['MainTitle'])
-    main_title_with_image = Table([[main_image, Spacer(0.05 * inch, 0), main_title]], colWidths=[0.2 * inch, 0.05 * inch, None], hAlign='LEFT')
-    main_title_with_image.setStyle(TableStyle([
+    main_title_with_images = Table([[main_image, main_title, university_image]], colWidths=[0.5 * inch, None, 1.5 * cm],
+                                   hAlign='CENTER')
+    main_title_with_images.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
-        ('LEFTPADDING', (0, 0), (0, 0), 0),  # Remove left padding for the image
-        ('RIGHTPADDING', (-1, 0), (-1, 0), 0),  # Remove right padding for the title
-        ('PADDING', (0, 0), (-1, 0), 0.05 * inch),  # Reduce padding between cells
+        ('ALIGN', (1, 0), (1, 0), 'CENTER'),  # Center align the title
+        ('LEFTPADDING', (0, 0), (0, 0), 0),  # Remove left padding for the main image
+        ('RIGHTPADDING', (-1, 0), (-1, 0), 0),  # Remove right padding for the university logo
+        ('PADDING', (0, 0), (-1, 0), 0.1 * inch),  # Reduce padding between cells
     ]))
-    report_elements.append(main_title_with_image)
-    report_elements.append(Spacer(0.2, 0.2 * inch))
+    report_elements.append(main_title_with_images)
+    report_elements.append(Spacer(0.1, 0.1 * inch))
+
+    # Add the stylish horizontal line
+    line_color = HexColor('#808080')  # Choose a color that matches your design
+    line_width = 7.0 * inch
+    line_thickness = 1.0  # Adjust the thickness as needed
+    horizontal_line = HRFlowable(width=line_width, thickness=line_thickness, color=line_color)
+    report_elements.append(horizontal_line)
+    report_elements.append(Spacer(0.1, 0.1 * inch))
 
     # Add farmer information and sample details tables
     farmer_info_data = [
@@ -85,7 +97,7 @@ def generate_pdf_report(data, file_path, indicator_values):
         ['Sample Date', data['collection_date']],
         ['GPS Data', f"Lat: {data['latitude']}° N, Long: {data['longitude']}° E"]
     ]
-    sample_details_table = Table(sample_details_data, colWidths=[1.0 * inch, 2.3 * inch])
+    sample_details_table = Table(sample_details_data, colWidths=[1.0 * inch, 2.5 * inch])
     sample_details_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4682B4')),  # Steelblue
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#FFFFFF')),  # White
@@ -225,9 +237,9 @@ def generate_pdf_report(data, file_path, indicator_values):
                                            ParagraphStyle(name='CropRecommendations', wordWrap='LTR', fontSize=8)), ''],
         ['Fertilizer Recommendations', Paragraph(data['fertilizer_recommendation'],
                                                  ParagraphStyle(name='FertilizerRecommendations', wordWrap='LTR',
-                                                                fontSize=8)), '']
+                                                                fontSize=8, vAlign='TOP')), '']  # Add vAlign='TOP' here
     ]
-    overall_result_table = Table(overall_result_data, colWidths=[2.0 * inch, 2.0 * inch, 2.0 * inch])
+    overall_result_table = Table(overall_result_data, colWidths=[1.5 * inch, 1.5 * inch, 4.0 * inch])
     overall_result_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), primary_color),
         ('TEXTCOLOR', (0, 0), (-1, 0), accent_color),
@@ -243,17 +255,17 @@ def generate_pdf_report(data, file_path, indicator_values):
         ('TOPPADDING', (0, 1), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
         ('SPAN', (1, 3), (-1, 3)),  # Merge the 'Value' and 'Range' cells for the 'Crop Recommendations' row
-        ('SPAN', (1, 4), (-1, 4))  # Merge the 'Value' and 'Range' cells for the 'Fertilizer Recommendations' row
+        ('SPAN', (1, 4), (-1, 4)),  # Merge the 'Value' and 'Range' cells for the 'Fertilizer Recommendations' row
+        ('VALIGN', (0, 1), (-1, -1), 'TOP')  # Align the text to the top
     ]))
-
     overall_result_title = Paragraph("Overall Result",
                                      ParagraphStyle(name='TableTitle', fontSize=10, alignment=TA_CENTER,
                                                     fontWeight='bold'))
     overall_result_table_with_title = Table([[overall_result_title],
                                              [overall_result_table]],
-                                            colWidths=[6.0 * inch], hAlign='CENTER')
+                                            colWidths=[7.0 * inch], hAlign='CENTER')
     overall_result_table_with_title.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # Vertically center the content
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align the entire table content to the top
         ('LEFTPADDING', (0, 0), (0, -1), 0),  # Left padding for the first column
         ('RIGHTPADDING', (-1, 0), (-1, -1), 0),  # Right padding for the last column
         ('TOPPADDING', (0, 0), (-1, -1), 0),
@@ -265,24 +277,31 @@ def generate_pdf_report(data, file_path, indicator_values):
 
     # Add the generated report time and date
     report_date = datetime.now().strftime('%d-%m-%Y(%A) %I:%M:%S%p')
-    report_elements.append(Paragraph(f"Report Generated On: {report_date}", ParagraphStyle(name='ReportDate', alignment=TA_CENTER, fontSize=8, textColor=tertiary_color)))
+    report_elements.append(Paragraph(f"Report Generated On: {report_date}",
+                                     ParagraphStyle(name='ReportDate', alignment=TA_CENTER, fontSize=7,
+                                                    textColor=tertiary_color)))
 
     # Add developer information
-    report_elements.append(Spacer(1, 0.2 * inch))
+    report_elements.append(Spacer(0.1, 0.1 * inch))
 
-    credentials_text = "Designed & Developed by: LALDINPUIA, Research Scholar"
-    report_elements.append(Paragraph(credentials_text,
-                                     ParagraphStyle(name='CredentialsText', fontName='Helvetica', fontSize=6,
-                                                    textColor=secondary_color, alignment=TA_CENTER)))
+    # Define the paragraph style for developer information with a font size of 7
+    styles = getSampleStyleSheet()
+    developer_info_style = ParagraphStyle('DeveloperInfo', parent=styles['Normal'], fontSize=7, leading=9,
+                                          alignment=TA_CENTER)
 
-    department_text = "Department of Mathematics and Computer Science, Mizoram University"
-    report_elements.append(Paragraph(department_text,
-                                     ParagraphStyle(name='DepartmentText', fontName='Helvetica', fontSize=6,
-                                                    textColor=secondary_color, alignment=TA_CENTER, fontWeight='bold')))
+    # Developer information text, all set to font size 7 and aligned left
+    developer_info_text = """
+    <b>SOIL HEALTH DIAGNOSTIC SYSTEM</b><br/>
+    Designed & Developed by: LALDINPUIA, Research Scholar<br/>
+    Department of Mathematics and Computer Science, Mizoram University<br/>
+    Email: <link href="mailto:mzu22000486@mzu.edu.in" color="green">mzu22000486@mzu.edu.in</link>
+    """
 
-    email_link_style = ParagraphStyle(name='EmailLink', fontName='Helvetica', fontSize=8,
-                                      textColor=colors.HexColor('#2E8B57'), alignment=TA_CENTER)
-    report_elements.append(Paragraph("Email: mzu22000486@mzu.edu.in", email_link_style))
+    # Create a Paragraph for the text
+    developer_paragraph = Paragraph(developer_info_text, developer_info_style)
+
+    # Add the paragraph to the report elements
+    report_elements.append(developer_paragraph)
 
     # Build the report
     report.build(report_elements)
