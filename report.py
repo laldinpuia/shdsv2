@@ -5,7 +5,7 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch, cm
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from indicators import soil_indicators
 from fahp import fahp_weights, evaluate_soil_health
 from assessment import assess_soil_health, generate_rating, generate_crop_recommendations
@@ -237,7 +237,7 @@ def generate_pdf_report(data, file_path, indicator_values):
                                            ParagraphStyle(name='CropRecommendations', wordWrap='LTR', fontSize=8)), ''],
         ['Fertilizer Recommendations', Paragraph(data['fertilizer_recommendation'],
                                                  ParagraphStyle(name='FertilizerRecommendations', wordWrap='LTR',
-                                                                fontSize=8, vAlign='TOP')), '']  # Add vAlign='TOP' here
+                                                                fontSize=8, alignment=TA_JUSTIFY)), '']  # Add alignment=TA_JUSTIFY here
     ]
     overall_result_table = Table(overall_result_data, colWidths=[1.5 * inch, 1.5 * inch, 4.0 * inch])
     overall_result_table.setStyle(TableStyle([
