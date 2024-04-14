@@ -1,5 +1,5 @@
 SOIL HEALTH DIAGNOSTIC SYSTEM v0.2.404
-=============================================
+
 
 Requirements:
 
@@ -15,5 +15,5 @@ tkcalendar==1.6.1
 ttkthemes==3.2.2
 
 
-=============================================
+
 LALDINPUIA's Research from Mizoram University
